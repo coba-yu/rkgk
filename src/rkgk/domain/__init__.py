@@ -4,17 +4,27 @@ The vocabulary and the entities are versioned together: index manifests record `
 so an index built with an older model can be detected and rebuilt.
 """
 
-from rkgk.domain.entities import (
-    SLUG_PATTERN,
-    Chunk,
-    Concept,
-    ConceptEdge,
-    Entity,
-    Evidence,
-    PaperConceptEdge,
+from rkgk.domain.base import SLUG_PATTERN, Entity, Slug
+from rkgk.domain.chunk import Chunk
+from rkgk.domain.graph import Concept, ConceptEdge, Evidence, PaperConceptEdge
+from rkgk.domain.paper import (
+    MARKER_PATTERN,
+    MarkerKind,
+    Page,
+    PageMarker,
+    Paper,
+    PaperIndexEntry,
     PaperMeta,
     PaperPreprocessInfo,
-    Slug,
+    build_paper_dir_name,
+    parse_page,
+)
+from rkgk.domain.repositories import (
+    PaperArtifactInvalidError,
+    PaperArtifactUnreadableError,
+    PaperNotFoundError,
+    PaperRepository,
+    PaperRepositoryError,
 )
 from rkgk.domain.vocabulary import (
     ConceptRelationSpec,
@@ -35,6 +45,7 @@ DOMAIN_MODEL_VERSION = 1
 
 __all__ = [
     "DOMAIN_MODEL_VERSION",
+    "MARKER_PATTERN",
     "SLUG_PATTERN",
     "Chunk",
     "Concept",
@@ -45,15 +56,27 @@ __all__ = [
     "ConceptTypeSpec",
     "Entity",
     "Evidence",
+    "MarkerKind",
     "Origin",
     "OriginSpec",
+    "Page",
+    "PageMarker",
+    "Paper",
     "PaperConceptEdge",
     "PaperConceptRelation",
+    "PaperIndexEntry",
     "PaperMeta",
     "PaperPreprocessInfo",
+    "PaperArtifactInvalidError",
+    "PaperArtifactUnreadableError",
+    "PaperNotFoundError",
+    "PaperRepository",
+    "PaperRepositoryError",
     "RelationSpec",
     "Slug",
+    "build_paper_dir_name",
     "describe_vocabulary",
+    "parse_page",
     "traversable_concept_relations",
     "traversable_concept_types",
     "traversable_paper_relations",
