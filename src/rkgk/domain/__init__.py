@@ -4,19 +4,9 @@ The vocabulary and the entities are versioned together: index manifests record `
 so an index built with an older model can be detected and rebuilt.
 """
 
-from rkgk.domain.entities import (
-    SLUG_PATTERN,
-    Chunk,
-    Concept,
-    ConceptEdge,
-    Entity,
-    Evidence,
-    PaperConceptEdge,
-    PaperMeta,
-    PaperPreprocessInfo,
-    Slug,
-    build_paper_dir_name,
-)
+from rkgk.domain.base import SLUG_PATTERN, Entity, Slug
+from rkgk.domain.chunk import Chunk
+from rkgk.domain.graph import Concept, ConceptEdge, Evidence, PaperConceptEdge
 from rkgk.domain.paper import (
     MARKER_PATTERN,
     MarkerKind,
@@ -24,6 +14,9 @@ from rkgk.domain.paper import (
     PageMarker,
     Paper,
     PaperIndexEntry,
+    PaperMeta,
+    PaperPreprocessInfo,
+    build_paper_dir_name,
     parse_page,
 )
 from rkgk.domain.repositories import PaperRepository, PaperRepositoryError
@@ -72,8 +65,8 @@ __all__ = [
     "PaperRepositoryError",
     "RelationSpec",
     "Slug",
-    "describe_vocabulary",
     "build_paper_dir_name",
+    "describe_vocabulary",
     "parse_page",
     "traversable_concept_relations",
     "traversable_concept_types",

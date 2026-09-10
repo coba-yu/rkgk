@@ -10,8 +10,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from rkgk.domain.entities import PaperMeta, build_paper_dir_name
-from rkgk.domain.paper import Page, Paper, PaperIndexEntry, parse_page
+from rkgk.domain.paper import Page, Paper, PaperIndexEntry, PaperMeta, build_paper_dir_name, parse_page
 from rkgk.domain.repositories import PaperRepositoryError
 
 PAPERS_DIR_NAME = "papers"

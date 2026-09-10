@@ -1,6 +1,33 @@
-import pytest
+from datetime import UTC, datetime
 
-from rkgk.domain.paper import MarkerKind, parse_page
+import pytest
+from pydantic import ValidationError
+
+from rkgk.domain.paper import MarkerKind, PaperMeta, PaperPreprocessInfo, parse_page
+
+PREPROCESS = PaperPreprocessInfo(tool="pymupdf", version="1.24.0", processed_at=datetime(2026, 1, 1, tzinfo=UTC))
+
+
+def make_paper_meta(paper_id: int) -> PaperMeta:
+    return PaperMeta(
+        id=paper_id,
+        title="Retrieval Augmented Generation",
+        authors=["Ada Lovelace"],
+        year=2026,
+        venue="NeurIPS",
+        page_count=12,
+        preprocess=PREPROCESS,
+    )
+
+
+@pytest.mark.parametrize(("paper_id", "expected"), [(1, "0001"), (42, "0042"), (9999, "9999"), (12345, "12345")])
+def test_paper_meta_dir_name_is_zero_padded_without_truncation(paper_id: int, expected: str) -> None:
+    assert make_paper_meta(paper_id).dir_name == expected
+
+
+def test_paper_meta_rejects_id_below_one() -> None:
+    with pytest.raises(ValidationError):
+        make_paper_meta(0)
 
 
 def test_parse_page_records_every_marker_in_line_order() -> None:

@@ -1,43 +1,10 @@
-from datetime import UTC, datetime
-
 import pytest
 from pydantic import ValidationError
 
-from rkgk.domain.entities import (
-    Chunk,
-    Concept,
-    ConceptEdge,
-    Evidence,
-    PaperConceptEdge,
-    PaperMeta,
-    PaperPreprocessInfo,
-)
+from rkgk.domain.graph import Concept, ConceptEdge, Evidence, PaperConceptEdge
 from rkgk.domain.vocabulary import ConceptRelationType, ConceptType, Origin, PaperConceptRelation
 
-PREPROCESS = PaperPreprocessInfo(tool="pymupdf", version="1.24.0", processed_at=datetime(2026, 1, 1, tzinfo=UTC))
 EVIDENCE = Evidence(page=3, quote="we propose a retrieval augmented generation pipeline")
-
-
-def make_paper_meta(paper_id: int) -> PaperMeta:
-    return PaperMeta(
-        id=paper_id,
-        title="Retrieval Augmented Generation",
-        authors=["Ada Lovelace"],
-        year=2026,
-        venue="NeurIPS",
-        page_count=12,
-        preprocess=PREPROCESS,
-    )
-
-
-@pytest.mark.parametrize(("paper_id", "expected"), [(1, "0001"), (42, "0042"), (9999, "9999"), (12345, "12345")])
-def test_paper_meta_dir_name_is_zero_padded_without_truncation(paper_id: int, expected: str) -> None:
-    assert make_paper_meta(paper_id).dir_name == expected
-
-
-def test_paper_meta_rejects_id_below_one() -> None:
-    with pytest.raises(ValidationError):
-        make_paper_meta(0)
 
 
 def test_evidence_rejects_blank_quote() -> None:
@@ -153,26 +120,6 @@ def test_concept_relation_accepts_general_knowledge_without_paper_id_or_evidence
     )
     assert relation.paper_id is None
     assert relation.evidence == ()
-
-
-def test_chunk_make_builds_the_id() -> None:
-    chunk = Chunk.create(paper_id=7, idx=3, page_start=2, page_end=3, text="body text")
-    assert chunk.id == "7:3"
-
-
-def test_chunk_rejects_page_end_before_page_start() -> None:
-    with pytest.raises(ValidationError, match="page_end"):
-        Chunk(id="1:0", paper_id=1, idx=0, page_start=5, page_end=4, text="body text")
-
-
-def test_chunk_rejects_mismatched_id() -> None:
-    with pytest.raises(ValidationError, match="id must be"):
-        Chunk(id="2:0", paper_id=1, idx=0, page_start=1, page_end=1, text="body text")
-
-
-def test_chunk_rejects_blank_text() -> None:
-    with pytest.raises(ValidationError):
-        Chunk(id="1:0", paper_id=1, idx=0, page_start=1, page_end=1, text="  ")
 
 
 def test_extra_fields_are_rejected() -> None:

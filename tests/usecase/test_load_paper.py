@@ -2,8 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from rkgk.domain.entities import PaperMeta, PaperPreprocessInfo
-from rkgk.domain.paper import Page, Paper, PaperIndexEntry
+from rkgk.domain.paper import Page, Paper, PaperIndexEntry, PaperMeta, PaperPreprocessInfo
 from rkgk.domain.repositories import PaperRepositoryError
 from rkgk.usecase.load_paper import LoadPaperUseCase
 
