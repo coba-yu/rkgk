@@ -184,3 +184,15 @@ def test_models_are_frozen() -> None:
     evidence = Evidence(page=1, quote="a quote")
     with pytest.raises(ValidationError):
         evidence.page = 2  # ty: ignore[invalid-assignment]
+
+
+def test_concept_edge_rejects_non_positive_paper_id() -> None:
+    with pytest.raises(ValidationError):
+        ConceptEdge(
+            source_id="graph-rag",
+            target_id="retrieval-augmented-generation",
+            relation=ConceptRelationType.IS_A,
+            origin=Origin.PAPER,
+            paper_id=0,
+            evidence=[EVIDENCE],
+        )

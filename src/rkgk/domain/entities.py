@@ -81,7 +81,7 @@ class ConceptEdge(Entity):
     target_id: Slug
     relation: ConceptRelationType
     origin: Origin
-    paper_id: int | None = None
+    paper_id: int | None = Field(default=None, ge=1)
     evidence: list[Evidence] = []
 
     @model_validator(mode="after")
