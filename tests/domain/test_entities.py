@@ -73,7 +73,7 @@ def test_paper_concept_accepts_evidence() -> None:
         relation=PaperConceptRelation.PROPOSES,
         evidence=[EVIDENCE],
     )
-    assert paper_concept.evidence == [EVIDENCE]
+    assert paper_concept.evidence == (EVIDENCE,)
 
 
 def test_concept_relation_rejects_self_relation() -> None:
@@ -152,7 +152,7 @@ def test_concept_relation_accepts_general_knowledge_without_paper_id_or_evidence
         origin=Origin.GENERAL_KNOWLEDGE,
     )
     assert relation.paper_id is None
-    assert relation.evidence == []
+    assert relation.evidence == ()
 
 
 def test_chunk_make_builds_the_id() -> None:
