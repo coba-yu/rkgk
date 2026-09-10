@@ -156,23 +156,23 @@ def test_concept_relation_accepts_general_knowledge_without_paper_id_or_evidence
 
 
 def test_chunk_make_builds_the_id() -> None:
-    chunk = Chunk.create(paper_id=7, seq=3, page_start=2, page_end=3, text="body text")
+    chunk = Chunk.create(paper_id=7, index_in_paper=3, page_start=2, page_end=3, text="body text")
     assert chunk.id == "7:3"
 
 
 def test_chunk_rejects_page_end_before_page_start() -> None:
     with pytest.raises(ValidationError, match="page_end"):
-        Chunk(id="1:0", paper_id=1, seq=0, page_start=5, page_end=4, text="body text")
+        Chunk(id="1:0", paper_id=1, index_in_paper=0, page_start=5, page_end=4, text="body text")
 
 
 def test_chunk_rejects_mismatched_id() -> None:
     with pytest.raises(ValidationError, match="id must be"):
-        Chunk(id="2:0", paper_id=1, seq=0, page_start=1, page_end=1, text="body text")
+        Chunk(id="2:0", paper_id=1, index_in_paper=0, page_start=1, page_end=1, text="body text")
 
 
 def test_chunk_rejects_blank_text() -> None:
     with pytest.raises(ValidationError):
-        Chunk(id="1:0", paper_id=1, seq=0, page_start=1, page_end=1, text="  ")
+        Chunk(id="1:0", paper_id=1, index_in_paper=0, page_start=1, page_end=1, text="  ")
 
 
 def test_extra_fields_are_rejected() -> None:
