@@ -4,8 +4,6 @@ Subcommands register themselves via `register_command` so that later PRs can
 add functionality without editing `main`.
 """
 
-from __future__ import annotations
-
 import argparse
 from collections.abc import Callable
 
