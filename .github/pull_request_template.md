@@ -4,7 +4,7 @@ PR タイトルは Conventional Commits に従う。
 種別は feat / fix / docs / refactor / test / build / chore / style から選ぶ。
 -->
 
-## 概要
+## Objective (WHY)
 
 <!-- 何を、なぜ変えたかを書く。 -->
 
