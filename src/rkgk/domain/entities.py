@@ -101,10 +101,6 @@ class ConceptRelation(Entity):
         return self
 
 
-def _chunk_id(paper_id: int, seq: int) -> str:
-    return f"{paper_id}:{seq}"
-
-
 class Chunk(Entity):
     id: str
     paper_id: int = Field(ge=1)
@@ -125,15 +121,19 @@ class Chunk(Entity):
         """The id is derived from paper_id and seq so a chunk read from disk is traceable without a lookup."""
         if self.page_end < self.page_start:
             raise ValueError("page_end must be greater than or equal to page_start")
-        expected_id = _chunk_id(self.paper_id, self.seq)
+        expected_id = self.build_id(self.paper_id, self.seq)
         if self.id != expected_id:
             raise ValueError(f"id must be {expected_id!r}")
         return self
 
+    @staticmethod
+    def build_id(paper_id: int, seq: int) -> str:
+        return f"{paper_id}:{seq}"
+
     @classmethod
     def make(cls, paper_id: int, seq: int, page_start: int, page_end: int, text: str) -> Self:
         return cls(
-            id=_chunk_id(paper_id, seq),
+            id=cls.build_id(paper_id, seq),
             paper_id=paper_id,
             seq=seq,
             page_start=page_start,
