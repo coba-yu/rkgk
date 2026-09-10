@@ -9,4 +9,3 @@ Research Knowledge Graph Kit。論文検索 RAG の MVP。
 ## コーディング規約
 
 - `from __future__ import annotations` は使わない。Python 3.13 以上のみ対象なので不要。
-- 型ヒントは PEP 604 / 585 の記法（`X | None`、`list[str]`）を使う。
