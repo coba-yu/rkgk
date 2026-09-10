@@ -1,0 +1,6 @@
+{
+  "papers": [
+    {"id": 1, "title": "Retrieval-Augmented Generation for Conference Paper Search"},
+    {"id": 2, "title": "Knowledge Graphs as Retrieval Backbones"}
+  ]
+}

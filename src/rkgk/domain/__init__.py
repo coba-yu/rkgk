@@ -15,6 +15,7 @@ from rkgk.domain.entities import (
     PaperMeta,
     PaperPreprocessInfo,
     Slug,
+    paper_dir_name,
 )
 from rkgk.domain.vocabulary import (
     ConceptRelationSpec,
@@ -54,6 +55,7 @@ __all__ = [
     "RelationSpec",
     "Slug",
     "describe_vocabulary",
+    "paper_dir_name",
     "traversable_concept_relations",
     "traversable_concept_types",
     "traversable_paper_relations",
