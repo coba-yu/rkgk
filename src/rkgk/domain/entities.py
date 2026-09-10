@@ -104,7 +104,7 @@ class ConceptRelation(Entity):
 class Chunk(Entity):
     id: str
     paper_id: int = Field(ge=1)
-    index_in_paper: int = Field(ge=0)
+    idx: int = Field(ge=0)
     page_start: int = Field(ge=1)
     page_end: int = Field(ge=1)
     text: str
@@ -118,27 +118,24 @@ class Chunk(Entity):
 
     @model_validator(mode="after")
     def _check_pages_and_id(self) -> Self:
-        """The id is derived from paper_id and index_in_paper.
-
-        A chunk read from disk is then traceable to its paper without a lookup.
-        """
+        """The id is derived from paper_id and idx so a chunk read from disk is traceable without a lookup."""
         if self.page_end < self.page_start:
             raise ValueError("page_end must be greater than or equal to page_start")
-        expected_id = self.build_id(self.paper_id, self.index_in_paper)
+        expected_id = self.build_id(self.paper_id, self.idx)
         if self.id != expected_id:
             raise ValueError(f"id must be {expected_id!r}")
         return self
 
     @staticmethod
-    def build_id(paper_id: int, index_in_paper: int) -> str:
-        return f"{paper_id}:{index_in_paper}"
+    def build_id(paper_id: int, idx: int) -> str:
+        return f"{paper_id}:{idx}"
 
     @classmethod
-    def create(cls, paper_id: int, index_in_paper: int, page_start: int, page_end: int, text: str) -> Self:
+    def create(cls, paper_id: int, idx: int, page_start: int, page_end: int, text: str) -> Self:
         return cls(
-            id=cls.build_id(paper_id, index_in_paper),
+            id=cls.build_id(paper_id, idx),
             paper_id=paper_id,
-            index_in_paper=index_in_paper,
+            idx=idx,
             page_start=page_start,
             page_end=page_end,
             text=text,
