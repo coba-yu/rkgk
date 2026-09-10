@@ -1,0 +1,96 @@
+"""The `extract` command: everything an agent does with the extraction JSON of one paper.
+
+`schema` says what to write, `validate` says whether the paper text backs what was written, and `save` stores
+the result next to the paper.
+"""
+
+import argparse
+import json
+from collections.abc import Callable
+from pathlib import Path
+
+from rkgk.cli._output import EXIT_ERROR, EXIT_INVALID, EXIT_OK, print_json
+from rkgk.domain.extraction import (
+    ExtractionIssue,
+    ExtractionResult,
+    ExtractionValidationError,
+    build_extraction_schema,
+)
+from rkgk.domain.repositories import ExtractionRepositoryError, PaperRepositoryError
+from rkgk.infrastructure.file_extraction_repository import FileExtractionRepository
+from rkgk.infrastructure.file_paper_repository import FilePaperRepository
+from rkgk.usecase.save_extraction import SaveExtractionUseCase
+from rkgk.usecase.validate_extraction import ValidateExtractionUseCase
+
+NAME = "extract"
+HELP = "describe, check, or store the extraction JSON an agent wrote for one paper"
+
+DEFAULT_DATA_DIR = Path("data")
+
+
+def register(subparsers: argparse._SubParsersAction) -> None:
+    parser = subparsers.add_parser(NAME, help=HELP)
+    actions = parser.add_subparsers(dest="action", required=True)
+    schema = actions.add_parser("schema", help="print the JSON Schema an extraction JSON must follow")
+    schema.set_defaults(func=_run_schema)
+    # validate and save read the same two arguments, so they are declared together to keep them in step.
+    for name, help_text, handler in (
+        ("validate", "check an extraction JSON against the paper text", _run_validate),
+        ("save", "check an extraction JSON and write it next to the paper", _run_save),
+    ):
+        action = actions.add_parser(name, help=help_text)
+        action.add_argument("paper_id", type=int)
+        action.add_argument("json_path", type=Path)
+        action.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR)
+        action.set_defaults(func=handler)
+
+
+def _run_schema(_args: argparse.Namespace) -> int:
+    print(json.dumps(build_extraction_schema(), indent=2, ensure_ascii=False))
+    return EXIT_OK
+
+
+def _run_validate(args: argparse.Namespace) -> int:
+    use_case = ValidateExtractionUseCase(FilePaperRepository(args.data_dir))
+    return _run(args, use_case.execute, {})
+
+
+def _run_save(args: argparse.Namespace) -> int:
+    extraction_repository = FileExtractionRepository(args.data_dir)
+    use_case = SaveExtractionUseCase(FilePaperRepository(args.data_dir), extraction_repository)
+    return _run(args, use_case.execute, {"path": str(extraction_repository.path_for(args.paper_id))})
+
+
+def _run(
+    args: argparse.Namespace, execute: Callable[[int, object], ExtractionResult], extra: dict[str, object]
+) -> int:
+    try:
+        payload = json.loads(args.json_path.read_text(encoding="utf-8"))
+        result = execute(args.paper_id, payload)
+    except ExtractionValidationError as error:
+        print_json({"status": "invalid", "issues": [_render_issue(issue) for issue in error.issues]})
+        return EXIT_INVALID
+    except (
+        OSError,
+        UnicodeDecodeError,
+        json.JSONDecodeError,
+        PaperRepositoryError,
+        ExtractionRepositoryError,
+    ) as error:
+        print_json({"status": "error", "message": str(error)})
+        return EXIT_ERROR
+    print_json({"status": "ok", **_render_result(result), **extra})
+    return EXIT_OK
+
+
+def _render_issue(issue: ExtractionIssue) -> dict[str, str]:
+    return {"path": issue.path, "message": issue.message}
+
+
+def _render_result(result: ExtractionResult) -> dict[str, object]:
+    return {
+        "paper_id": result.paper_id,
+        "concepts": len(result.concepts),
+        "paper_concepts": len(result.paper_concepts),
+        "concept_relations": len(result.concept_relations),
+    }

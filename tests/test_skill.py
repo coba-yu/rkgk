@@ -24,7 +24,7 @@ def test_the_skill_embeds_the_vocabulary_verbatim() -> None:
 
 def test_the_skill_tells_the_agent_which_commands_to_run() -> None:
     text = read_agent_skill()
-    assert "uv run rkgk schema extraction" in text
+    assert "uv run rkgk extract schema" in text
     assert "uv run rkgk extract validate" in text
     assert "uv run rkgk extract save" in text
 

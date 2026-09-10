@@ -17,7 +17,7 @@ description: 指定された論文 ID の抽出 JSON を作る。論文本文か
 
 ## 出力形式
 
-`uv run rkgk schema extraction` を実行して JSON Schema を取得し、その構造に従った JSON を作る。
+`uv run rkgk extract schema` を実行して JSON Schema を取得し、その構造に従った JSON を作る。
 `schema_version` は Schema が示す値をそのまま入れる。
 `paper_id` は指定された論文 ID と一致させる。
 概念の `local_id` は `c1`、`c2` のように 1 から始まる連番にする。
@@ -71,7 +71,7 @@ evidence の `page` は、その引用が載っているページ番号にする
 ## 手順
 
 1. `data/papers/NNNN/paper.json` と全ページの Markdown を読む。
-2. `uv run rkgk schema extraction` で JSON Schema を確認する。
+2. `uv run rkgk extract schema` で JSON Schema を確認する。
 3. 抽出結果の JSON を一時ファイル（例: `/tmp/extraction-NNNN.json`）に書く。
 4. `uv run rkgk extract validate <paper_id> <file>` を実行する。
 5. 出力が `{"status": "invalid", ...}` なら `issues` の `path` と `message` を読み、その箇所を直して 4 に戻る。
