@@ -118,7 +118,10 @@ class Chunk(Entity):
 
     @model_validator(mode="after")
     def _check_pages_and_id(self) -> Self:
-        """The id is derived from paper_id and index_in_paper so a chunk read from disk is traceable without a lookup."""
+        """The id is derived from paper_id and index_in_paper.
+
+        A chunk read from disk is then traceable to its paper without a lookup.
+        """
         if self.page_end < self.page_start:
             raise ValueError("page_end must be greater than or equal to page_start")
         expected_id = self.build_id(self.paper_id, self.index_in_paper)
