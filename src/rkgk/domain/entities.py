@@ -28,7 +28,7 @@ class PaperPreprocessInfo(Entity):
     processed_at: datetime
 
 
-def paper_dir_name(paper_id: int) -> str:
+def build_paper_dir_name(paper_id: int) -> str:
     return f"{paper_id:04d}"
 
 
@@ -45,7 +45,7 @@ class PaperMeta(Entity):
 
     @property
     def dir_name(self) -> str:
-        return paper_dir_name(self.id)
+        return build_paper_dir_name(self.id)
 
 
 class Evidence(Entity):

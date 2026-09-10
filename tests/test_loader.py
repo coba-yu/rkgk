@@ -9,7 +9,7 @@ from rkgk.loader import (
     MarkerKind,
     load_index,
     load_paper,
-    page_file_name,
+    build_page_file_name,
     parse_page,
 )
 
@@ -180,4 +180,4 @@ def test_page_count_larger_than_the_page_files_is_reported(data_dir: Path) -> No
 
 @pytest.mark.parametrize(("number", "expected"), [(1, "001.md"), (12, "012.md"), (999, "999.md"), (1000, "1000.md")])
 def test_page_file_name_is_zero_padded_without_truncation(number: int, expected: str) -> None:
-    assert page_file_name(number) == expected
+    assert build_page_file_name(number) == expected

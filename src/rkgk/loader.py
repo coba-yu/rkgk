@@ -12,7 +12,7 @@ from pathlib import Path
 
 from pydantic import Field, ValidationError
 
-from rkgk.domain.entities import Entity, PaperMeta, paper_dir_name
+from rkgk.domain.entities import Entity, PaperMeta, build_paper_dir_name
 
 PAPERS_DIR_NAME = "papers"
 INDEX_FILE_NAME = "index.json"
@@ -54,7 +54,7 @@ class LoaderError(Exception):
     """Raised when an artifact is missing, unreadable, or inconsistent with the metadata that describes it."""
 
 
-def page_file_name(number: int) -> str:
+def build_page_file_name(number: int) -> str:
     return f"{number:03d}.md"
 
 
@@ -123,7 +123,7 @@ def _load_pages(paper_dir: Path, meta: PaperMeta) -> tuple[Page, ...]:
     pages_dir = paper_dir / PAGES_DIR_NAME
     if not pages_dir.is_dir():
         raise _fail(pages_dir, f"{PAGES_DIR_NAME} directory not found", meta.id)
-    expected = {page_file_name(number) for number in range(1, meta.page_count + 1)}
+    expected = {build_page_file_name(number) for number in range(1, meta.page_count + 1)}
     found = {entry.name for entry in pages_dir.iterdir()}
     missing = sorted(expected - found)
     if missing:
@@ -139,7 +139,7 @@ def _load_pages(paper_dir: Path, meta: PaperMeta) -> tuple[Page, ...]:
         )
     pages: list[Page] = []
     for number in range(1, meta.page_count + 1):
-        path = pages_dir / page_file_name(number)
+        path = pages_dir / build_page_file_name(number)
         try:
             text = path.read_text(encoding="utf-8")
         except OSError as error:
@@ -149,7 +149,7 @@ def _load_pages(paper_dir: Path, meta: PaperMeta) -> tuple[Page, ...]:
 
 
 def load_paper(data_dir: Path, paper_id: int) -> LoadedPaper:
-    paper_dir = data_dir / PAPERS_DIR_NAME / paper_dir_name(paper_id)
+    paper_dir = data_dir / PAPERS_DIR_NAME / build_paper_dir_name(paper_id)
     if not paper_dir.is_dir():
         raise _fail(paper_dir, "paper directory not found", paper_id)
     meta = _load_meta(paper_dir, paper_id)
