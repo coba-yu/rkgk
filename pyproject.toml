@@ -16,7 +16,11 @@ build-backend = "hatchling.build"
 packages = ["src/rkgk"]
 
 [dependency-groups]
-dev = ["pytest", "ruff"]
+dev = [
+    "pytest",
+    "ruff",
+    "ty>=0.0.80",
+]
 
 [tool.ruff]
 line-length = 100
@@ -25,6 +29,9 @@ src = ["src", "tests"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
+
+[tool.ty.src]
+include = ["src", "tests"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
