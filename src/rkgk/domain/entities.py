@@ -56,6 +56,8 @@ class Evidence(Entity):
 
 
 class Concept(Entity):
+    """A node of the graph: one canonical concept shared by every paper that refers to it."""
+
     id: Slug
     canonical_name: str = Field(min_length=1)
     type: ConceptType
