@@ -26,6 +26,7 @@ from rkgk.domain.paper import (
     PaperIndexEntry,
     parse_page,
 )
+from rkgk.domain.repositories import PaperRepository, PaperRepositoryError
 from rkgk.domain.vocabulary import (
     ConceptRelationSpec,
     ConceptRelationType,
@@ -67,6 +68,8 @@ __all__ = [
     "PaperIndexEntry",
     "PaperMeta",
     "PaperPreprocessInfo",
+    "PaperRepository",
+    "PaperRepositoryError",
     "RelationSpec",
     "Slug",
     "describe_vocabulary",
