@@ -6,6 +6,21 @@ so an index built with an older model can be detected and rebuilt.
 
 from rkgk.domain.base import SLUG_PATTERN, Entity, Slug
 from rkgk.domain.chunk import Chunk
+from rkgk.domain.extraction import (
+    EXTRACTION_SCHEMA_VERSION,
+    LOCAL_CONCEPT_ID_PATTERN,
+    ExtractedConcept,
+    ExtractedConceptEdge,
+    ExtractedEvidence,
+    ExtractedPaperConceptEdge,
+    ExtractionIssue,
+    ExtractionResult,
+    ExtractionValidationError,
+    LocalConceptId,
+    build_extraction_schema,
+    check_extraction_against_paper,
+    normalize_whitespace,
+)
 from rkgk.domain.graph import Concept, ConceptEdge, Evidence, PaperConceptEdge
 from rkgk.domain.paper import (
     MARKER_PATTERN,
@@ -20,6 +35,11 @@ from rkgk.domain.paper import (
     parse_page,
 )
 from rkgk.domain.repositories import (
+    ExtractionArtifactInvalidError,
+    ExtractionArtifactUnreadableError,
+    ExtractionNotFoundError,
+    ExtractionRepository,
+    ExtractionRepositoryError,
     PaperArtifactInvalidError,
     PaperArtifactUnreadableError,
     PaperNotFoundError,
@@ -45,6 +65,8 @@ DOMAIN_MODEL_VERSION = 1
 
 __all__ = [
     "DOMAIN_MODEL_VERSION",
+    "EXTRACTION_SCHEMA_VERSION",
+    "LOCAL_CONCEPT_ID_PATTERN",
     "MARKER_PATTERN",
     "SLUG_PATTERN",
     "Chunk",
@@ -56,6 +78,19 @@ __all__ = [
     "ConceptTypeSpec",
     "Entity",
     "Evidence",
+    "ExtractedConcept",
+    "ExtractedConceptEdge",
+    "ExtractedEvidence",
+    "ExtractedPaperConceptEdge",
+    "ExtractionArtifactInvalidError",
+    "ExtractionArtifactUnreadableError",
+    "ExtractionIssue",
+    "ExtractionNotFoundError",
+    "ExtractionRepository",
+    "ExtractionRepositoryError",
+    "ExtractionResult",
+    "ExtractionValidationError",
+    "LocalConceptId",
     "MarkerKind",
     "Origin",
     "OriginSpec",
@@ -74,8 +109,11 @@ __all__ = [
     "PaperRepositoryError",
     "RelationSpec",
     "Slug",
+    "build_extraction_schema",
     "build_paper_dir_name",
+    "check_extraction_against_paper",
     "describe_vocabulary",
+    "normalize_whitespace",
     "parse_page",
     "traversable_concept_relations",
     "traversable_concept_types",
