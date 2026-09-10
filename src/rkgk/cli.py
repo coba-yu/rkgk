@@ -6,8 +6,7 @@ add functionality without editing `main`.
 
 import argparse
 from collections.abc import Callable
-
-from rkgk import __version__
+from importlib.metadata import version
 
 Registrar = Callable[[argparse.ArgumentParser], None]
 
@@ -32,7 +31,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--version",
         action="version",
-        version=f"%(prog)s {__version__}",
+        version=f"%(prog)s {version('rkgk')}",
     )
     subparsers = parser.add_subparsers(dest="command")
     for name, help_text, register_fn in _COMMANDS:

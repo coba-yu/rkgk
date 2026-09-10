@@ -1,8 +1,8 @@
 import argparse
+from importlib.metadata import version
 
 import pytest
 
-from rkgk import __version__
 from rkgk.cli import _COMMANDS, main, register_command
 
 
@@ -10,7 +10,7 @@ def test_version(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as exc_info:
         main(["--version"])
     assert exc_info.value.code == 0
-    assert __version__ in capsys.readouterr().out
+    assert version("rkgk") in capsys.readouterr().out
 
 
 def test_no_subcommand_returns_2(capsys: pytest.CaptureFixture[str]) -> None:
