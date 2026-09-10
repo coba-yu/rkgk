@@ -17,6 +17,8 @@ Slug = Annotated[str, Field(pattern=SLUG_PATTERN)]
 
 
 class Entity(BaseModel):
+    """Sequences are tuples because frozen=True only blocks attribute assignment, not list mutation."""
+
     model_config = ConfigDict(frozen=True, extra="forbid")
 
 
@@ -29,7 +31,7 @@ class PaperPreprocessInfo(Entity):
 class PaperMeta(Entity):
     id: int = Field(ge=1)
     title: str = Field(min_length=1)
-    authors: list[str]
+    authors: tuple[str, ...]
     year: int
     venue: str
     page_count: int = Field(ge=1)
@@ -61,7 +63,7 @@ class Concept(Entity):
     id: Slug
     canonical_name: str = Field(min_length=1)
     type: ConceptType
-    aliases: list[str] = []
+    aliases: tuple[str, ...] = ()
     description: str = ""
 
 
@@ -71,7 +73,7 @@ class PaperConceptEdge(Entity):
     paper_id: int = Field(ge=1)
     concept_id: Slug
     relation: PaperConceptRelation
-    evidence: list[Evidence] = Field(min_length=1)
+    evidence: tuple[Evidence, ...] = Field(min_length=1)
 
 
 class ConceptEdge(Entity):
@@ -82,7 +84,7 @@ class ConceptEdge(Entity):
     relation: ConceptRelationType
     origin: Origin
     paper_id: int | None = Field(default=None, ge=1)
-    evidence: list[Evidence] = []
+    evidence: tuple[Evidence, ...] = ()
 
     @model_validator(mode="after")
     def _check_origin_consistency(self) -> Self:

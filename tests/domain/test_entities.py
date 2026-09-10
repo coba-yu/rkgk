@@ -57,7 +57,7 @@ def test_concept_rejects_invalid_slug(concept_id: str) -> None:
 
 def test_concept_accepts_slug_and_defaults_to_no_aliases() -> None:
     concept = Concept(id="graph-rag2", canonical_name="Graph RAG", type=ConceptType.METHOD)
-    assert concept.aliases == []
+    assert concept.aliases == ()
     assert concept.description == ""
 
 
@@ -196,3 +196,11 @@ def test_concept_edge_rejects_non_positive_paper_id() -> None:
             paper_id=0,
             evidence=[EVIDENCE],
         )
+
+
+def test_evidence_sequences_are_immutable_after_creation() -> None:
+    edge = PaperConceptEdge(
+        paper_id=1, concept_id="graph-rag", relation=PaperConceptRelation.PROPOSES, evidence=[EVIDENCE]
+    )
+    assert isinstance(edge.evidence, tuple)
+    assert not hasattr(edge.evidence, "append")
