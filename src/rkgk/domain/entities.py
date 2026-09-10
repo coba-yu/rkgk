@@ -65,14 +65,18 @@ class Concept(Entity):
     description: str = ""
 
 
-class PaperConcept(Entity):
+class PaperConceptEdge(Entity):
+    """An edge from a paper to a concept, with the quotes that justify it."""
+
     paper_id: int = Field(ge=1)
     concept_id: Slug
     relation: PaperConceptRelation
     evidence: list[Evidence] = Field(min_length=1)
 
 
-class ConceptRelation(Entity):
+class ConceptEdge(Entity):
+    """An edge between two concepts, either backed by a paper or added from general knowledge."""
+
     source_id: Slug
     target_id: Slug
     relation: ConceptRelationType

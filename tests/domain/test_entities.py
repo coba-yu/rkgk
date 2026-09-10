@@ -6,9 +6,9 @@ from pydantic import ValidationError
 from rkgk.domain.entities import (
     Chunk,
     Concept,
-    ConceptRelation,
+    ConceptEdge,
     Evidence,
-    PaperConcept,
+    PaperConceptEdge,
     PaperMeta,
     PaperPreprocessInfo,
 )
@@ -63,11 +63,11 @@ def test_concept_accepts_slug_and_defaults_to_no_aliases() -> None:
 
 def test_paper_concept_requires_at_least_one_evidence() -> None:
     with pytest.raises(ValidationError):
-        PaperConcept(paper_id=1, concept_id="graph-rag", relation=PaperConceptRelation.PROPOSES, evidence=[])
+        PaperConceptEdge(paper_id=1, concept_id="graph-rag", relation=PaperConceptRelation.PROPOSES, evidence=[])
 
 
 def test_paper_concept_accepts_evidence() -> None:
-    paper_concept = PaperConcept(
+    paper_concept = PaperConceptEdge(
         paper_id=1,
         concept_id="graph-rag",
         relation=PaperConceptRelation.PROPOSES,
@@ -78,7 +78,7 @@ def test_paper_concept_accepts_evidence() -> None:
 
 def test_concept_relation_rejects_self_relation() -> None:
     with pytest.raises(ValidationError, match="must differ"):
-        ConceptRelation(
+        ConceptEdge(
             source_id="graph-rag",
             target_id="graph-rag",
             relation=ConceptRelationType.IS_A,
@@ -90,7 +90,7 @@ def test_concept_relation_rejects_self_relation() -> None:
 
 def test_concept_relation_from_paper_requires_paper_id() -> None:
     with pytest.raises(ValidationError, match="paper_id is required when origin is paper"):
-        ConceptRelation(
+        ConceptEdge(
             source_id="graph-rag",
             target_id="rag",
             relation=ConceptRelationType.IS_A,
@@ -101,7 +101,7 @@ def test_concept_relation_from_paper_requires_paper_id() -> None:
 
 def test_concept_relation_from_paper_requires_evidence() -> None:
     with pytest.raises(ValidationError, match="evidence must not be empty when origin is paper"):
-        ConceptRelation(
+        ConceptEdge(
             source_id="graph-rag",
             target_id="rag",
             relation=ConceptRelationType.IS_A,
@@ -112,7 +112,7 @@ def test_concept_relation_from_paper_requires_evidence() -> None:
 
 def test_concept_relation_from_general_knowledge_rejects_paper_id() -> None:
     with pytest.raises(ValidationError, match="paper_id must be None when origin is general_knowledge"):
-        ConceptRelation(
+        ConceptEdge(
             source_id="graph-rag",
             target_id="rag",
             relation=ConceptRelationType.IS_A,
@@ -123,7 +123,7 @@ def test_concept_relation_from_general_knowledge_rejects_paper_id() -> None:
 
 def test_concept_relation_from_general_knowledge_rejects_evidence() -> None:
     with pytest.raises(ValidationError, match="evidence must be empty when origin is general_knowledge"):
-        ConceptRelation(
+        ConceptEdge(
             source_id="graph-rag",
             target_id="rag",
             relation=ConceptRelationType.IS_A,
@@ -133,7 +133,7 @@ def test_concept_relation_from_general_knowledge_rejects_evidence() -> None:
 
 
 def test_concept_relation_accepts_paper_origin_with_paper_id_and_evidence() -> None:
-    relation = ConceptRelation(
+    relation = ConceptEdge(
         source_id="graph-rag",
         target_id="rag",
         relation=ConceptRelationType.IS_A,
@@ -145,7 +145,7 @@ def test_concept_relation_accepts_paper_origin_with_paper_id_and_evidence() -> N
 
 
 def test_concept_relation_accepts_general_knowledge_without_paper_id_or_evidence() -> None:
-    relation = ConceptRelation(
+    relation = ConceptEdge(
         source_id="graph-rag",
         target_id="rag",
         relation=ConceptRelationType.IS_A,
