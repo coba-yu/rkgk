@@ -5,49 +5,18 @@ and a `pages/` directory with one Markdown file per page.
 Every problem found while reading is raised as `LoaderError` so that a caller never sees a half-built paper.
 """
 
-import enum
 import json
-import re
 from pathlib import Path
 
-from pydantic import Field, ValidationError
+from pydantic import ValidationError
 
-from rkgk.domain.entities import Entity, PaperMeta, build_paper_dir_name
+from rkgk.domain.entities import PaperMeta, build_paper_dir_name
+from rkgk.domain.paper import Page, Paper, PaperIndexEntry, parse_page
 
 PAPERS_DIR_NAME = "papers"
 INDEX_FILE_NAME = "index.json"
 META_FILE_NAME = "paper.json"
 PAGES_DIR_NAME = "pages"
-
-# The preprocessor writes these markers on their own line, so anything else on the line is body text.
-MARKER_PATTERN = re.compile(r"^<!-- (figure|equation): (\d+) -->$")
-
-
-class MarkerKind(enum.StrEnum):
-    FIGURE = "figure"
-    EQUATION = "equation"
-
-
-class PaperIndexEntry(Entity):
-    id: int = Field(ge=1)
-    title: str = Field(min_length=1)
-
-
-class PageMarker(Entity):
-    kind: MarkerKind
-    number: int = Field(ge=1)
-    line: int = Field(ge=1)
-
-
-class Page(Entity):
-    number: int = Field(ge=1)
-    text: str
-    markers: tuple[PageMarker, ...] = ()
-
-
-class LoadedPaper(Entity):
-    meta: PaperMeta
-    pages: tuple[Page, ...]
 
 
 class LoaderError(Exception):
@@ -72,18 +41,6 @@ def _read_json(path: Path, paper_id: int | None = None) -> object:
         return json.loads(raw)
     except json.JSONDecodeError as error:
         raise _fail(path, f"is not valid JSON: {error}", paper_id) from error
-
-
-def parse_page(number: int, text: str) -> Page:
-    """Collect the markers of one page, keeping the marker lines in the text for later stages to skip or use."""
-    markers: list[PageMarker] = []
-    for line_number, line in enumerate(text.splitlines(), start=1):
-        matched = MARKER_PATTERN.match(line.strip())
-        if matched is None:
-            continue
-        kind, marker_number = matched.groups()
-        markers.append(PageMarker(kind=MarkerKind(kind), number=int(marker_number), line=line_number))
-    return Page(number=number, text=text, markers=tuple(markers))
 
 
 def load_index(data_dir: Path) -> tuple[PaperIndexEntry, ...]:
@@ -148,9 +105,9 @@ def _load_pages(paper_dir: Path, meta: PaperMeta) -> tuple[Page, ...]:
     return tuple(pages)
 
 
-def load_paper(data_dir: Path, paper_id: int) -> LoadedPaper:
+def load_paper(data_dir: Path, paper_id: int) -> Paper:
     paper_dir = data_dir / PAPERS_DIR_NAME / build_paper_dir_name(paper_id)
     if not paper_dir.is_dir():
         raise _fail(paper_dir, "paper directory not found", paper_id)
     meta = _load_meta(paper_dir, paper_id)
-    return LoadedPaper(meta=meta, pages=_load_pages(paper_dir, meta))
+    return Paper(meta=meta, pages=_load_pages(paper_dir, meta))

@@ -17,6 +17,15 @@ from rkgk.domain.entities import (
     Slug,
     build_paper_dir_name,
 )
+from rkgk.domain.paper import (
+    MARKER_PATTERN,
+    MarkerKind,
+    Page,
+    PageMarker,
+    Paper,
+    PaperIndexEntry,
+    parse_page,
+)
 from rkgk.domain.vocabulary import (
     ConceptRelationSpec,
     ConceptRelationType,
@@ -36,6 +45,7 @@ DOMAIN_MODEL_VERSION = 1
 
 __all__ = [
     "DOMAIN_MODEL_VERSION",
+    "MARKER_PATTERN",
     "SLUG_PATTERN",
     "Chunk",
     "Concept",
@@ -46,16 +56,22 @@ __all__ = [
     "ConceptTypeSpec",
     "Entity",
     "Evidence",
+    "MarkerKind",
     "Origin",
     "OriginSpec",
+    "Page",
+    "PageMarker",
+    "Paper",
     "PaperConceptEdge",
     "PaperConceptRelation",
+    "PaperIndexEntry",
     "PaperMeta",
     "PaperPreprocessInfo",
     "RelationSpec",
     "Slug",
     "describe_vocabulary",
     "build_paper_dir_name",
+    "parse_page",
     "traversable_concept_relations",
     "traversable_concept_types",
     "traversable_paper_relations",
