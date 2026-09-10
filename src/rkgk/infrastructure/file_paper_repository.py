@@ -28,11 +28,17 @@ def _fail(path: Path, problem: str, paper_id: int | None = None) -> PaperReposit
     return PaperRepositoryError(f"{subject}{path}: {problem}")
 
 
-def _read_json(path: Path, paper_id: int | None = None) -> object:
+def _read_text(path: Path, paper_id: int | None = None) -> str:
     try:
-        raw = path.read_text(encoding="utf-8")
+        return path.read_text(encoding="utf-8")
     except OSError as error:
         raise _fail(path, f"cannot be read: {error.strerror or error}", paper_id) from error
+    except UnicodeDecodeError as error:
+        raise _fail(path, f"is not valid UTF-8: {error}", paper_id) from error
+
+
+def _read_json(path: Path, paper_id: int | None = None) -> object:
+    raw = _read_text(path, paper_id)
     try:
         return json.loads(raw)
     except json.JSONDecodeError as error:
@@ -86,7 +92,10 @@ class FilePaperRepository:
         if not pages_dir.is_dir():
             raise _fail(pages_dir, f"{PAGES_DIR_NAME} directory not found", meta.id)
         expected = {build_page_file_name(number) for number in range(1, meta.page_count + 1)}
-        found = {entry.name for entry in pages_dir.iterdir()}
+        try:
+            found = {entry.name for entry in pages_dir.iterdir()}
+        except OSError as error:
+            raise _fail(pages_dir, f"cannot be listed: {error.strerror or error}", meta.id) from error
         missing = sorted(expected - found)
         if missing:
             raise _fail(
@@ -102,9 +111,9 @@ class FilePaperRepository:
         pages: list[Page] = []
         for number in range(1, meta.page_count + 1):
             path = pages_dir / build_page_file_name(number)
+            text = _read_text(path, meta.id)
             try:
-                text = path.read_text(encoding="utf-8")
-            except OSError as error:
-                raise _fail(path, f"cannot be read: {error.strerror or error}", meta.id) from error
-            pages.append(parse_page(number, text))
+                pages.append(parse_page(number, text))
+            except ValidationError as error:
+                raise _fail(path, f"has an invalid marker: {error}", meta.id) from error
         return tuple(pages)

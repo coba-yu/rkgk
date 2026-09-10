@@ -140,3 +140,33 @@ def test_page_count_larger_than_the_page_files_is_reported(data_dir: Path) -> No
 @pytest.mark.parametrize(("number", "expected"), [(1, "001.md"), (12, "012.md"), (999, "999.md"), (1000, "1000.md")])
 def test_page_file_name_is_zero_padded_without_truncation(number: int, expected: str) -> None:
     assert build_page_file_name(number) == expected
+
+
+def test_invalid_marker_number_is_reported_with_paper_id_and_path(data_dir: Path) -> None:
+    page = data_dir / "papers" / "0001" / "pages" / "002.md"
+    page.write_text("<!-- figure: 0 -->\nbody\n", encoding="utf-8")
+    with pytest.raises(PaperRepositoryError, match=r"paper 1: .*002\.md: has an invalid marker"):
+        FilePaperRepository(data_dir).find(1)
+
+
+def test_non_utf8_page_is_reported_with_paper_id_and_path(data_dir: Path) -> None:
+    page = data_dir / "papers" / "0001" / "pages" / "003.md"
+    page.write_bytes(b"\xff\xfe not utf-8")
+    with pytest.raises(PaperRepositoryError, match=r"paper 1: .*003\.md: is not valid UTF-8"):
+        FilePaperRepository(data_dir).find(1)
+
+
+def test_non_utf8_index_is_reported_with_path(data_dir: Path) -> None:
+    (data_dir / "papers" / "index.json").write_bytes(b"\xff\xfe")
+    with pytest.raises(PaperRepositoryError, match=r"index\.json: is not valid UTF-8"):
+        FilePaperRepository(data_dir).find_index()
+
+
+def test_unlistable_pages_dir_is_reported(data_dir: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+
+    def _raise(_self: Path) -> None:
+        raise PermissionError(13, "Permission denied")
+
+    monkeypatch.setattr(Path, "iterdir", _raise)
+    with pytest.raises(PaperRepositoryError, match=r"paper 1: .*pages: cannot be listed"):
+        FilePaperRepository(data_dir).find(1)
