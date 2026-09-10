@@ -7,9 +7,9 @@ import pytest
 from rkgk.loader import (
     LoaderError,
     MarkerKind,
+    build_page_file_name,
     load_index,
     load_paper,
-    build_page_file_name,
     parse_page,
 )
 
