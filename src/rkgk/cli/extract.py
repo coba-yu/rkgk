@@ -10,13 +10,14 @@ from collections.abc import Callable
 from pathlib import Path
 
 from rkgk.cli._output import EXIT_ERROR, EXIT_INVALID, EXIT_OK, print_json
-from rkgk.domain.extraction import (
+from rkgk.domain.models.extraction import (
     ExtractionIssue,
     ExtractionResult,
     ExtractionValidationError,
     build_extraction_schema,
 )
-from rkgk.domain.repositories import ExtractionRepositoryError, PaperRepositoryError
+from rkgk.domain.repositories.extraction import ExtractionRepositoryError
+from rkgk.domain.repositories.paper import PaperRepositoryError
 from rkgk.infrastructure.file_extraction_repository import FileExtractionRepository
 from rkgk.infrastructure.file_paper_repository import FilePaperRepository
 from rkgk.usecase.save_extraction import SaveExtractionUseCase

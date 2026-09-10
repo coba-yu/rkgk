@@ -1,8 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from rkgk.domain.graph import Concept, ConceptEdge, Evidence, PaperConceptEdge
-from rkgk.domain.vocabulary import ConceptRelationType, ConceptType, Origin, PaperConceptRelation
+from rkgk.domain.models.graph import Concept, ConceptEdge, Evidence, PaperConceptEdge
+from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType, Origin, PaperConceptRelation
 
 EVIDENCE = Evidence(page=3, quote="we propose a retrieval augmented generation pipeline")
 

@@ -3,7 +3,7 @@ import json
 import pytest
 from pydantic import ValidationError
 
-from rkgk.domain.extraction import (
+from rkgk.domain.models.extraction import (
     EXTRACTION_SCHEMA_VERSION,
     LOCAL_CONCEPT_ID_PATTERN,
     ExtractedConcept,
@@ -15,8 +15,8 @@ from rkgk.domain.extraction import (
     check_extraction_against_paper,
     normalize_whitespace,
 )
-from rkgk.domain.paper import Page, Paper, PaperMeta, PaperPreprocessInfo
-from rkgk.domain.vocabulary import ConceptRelationType, ConceptType, PaperConceptRelation
+from rkgk.domain.models.paper import Page, Paper, PaperMeta, PaperPreprocessInfo
+from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType, PaperConceptRelation
 
 PAPER = Paper(
     meta=PaperMeta(

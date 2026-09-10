@@ -3,18 +3,18 @@ from pathlib import Path
 
 import pytest
 
-from rkgk.domain.extraction import (
+from rkgk.domain.models.extraction import (
     ExtractedConcept,
     ExtractedEvidence,
     ExtractedPaperConceptEdge,
     ExtractionResult,
 )
-from rkgk.domain.repositories import (
+from rkgk.domain.models.vocabulary import ConceptType, PaperConceptRelation
+from rkgk.domain.repositories.extraction import (
     ExtractionArtifactInvalidError,
     ExtractionNotFoundError,
     ExtractionRepositoryError,
 )
-from rkgk.domain.vocabulary import ConceptType, PaperConceptRelation
 from rkgk.infrastructure.file_extraction_repository import FileExtractionRepository
 
 RESULT = ExtractionResult(

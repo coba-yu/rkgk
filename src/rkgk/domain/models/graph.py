@@ -8,8 +8,8 @@ from typing import Self
 
 from pydantic import Field, field_validator, model_validator
 
-from rkgk.domain.base import Entity, Slug
-from rkgk.domain.vocabulary import ConceptRelationType, ConceptType, Origin, PaperConceptRelation
+from rkgk.domain.models.base import Entity, Slug
+from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType, Origin, PaperConceptRelation
 
 
 class Evidence(Entity):

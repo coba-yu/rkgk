@@ -11,9 +11,9 @@ from typing import Annotated, Literal, Self
 
 from pydantic import Field, field_validator, model_validator
 
-from rkgk.domain.base import Entity
-from rkgk.domain.paper import Paper
-from rkgk.domain.vocabulary import ConceptRelationType, ConceptType, PaperConceptRelation
+from rkgk.domain.models.base import Entity
+from rkgk.domain.models.paper import Paper
+from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType, PaperConceptRelation
 
 EXTRACTION_SCHEMA_VERSION = 1
 

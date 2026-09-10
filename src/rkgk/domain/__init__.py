@@ -4,9 +4,9 @@ The vocabulary and the entities are versioned together: index manifests record `
 so an index built with an older model can be detected and rebuilt.
 """
 
-from rkgk.domain.base import SLUG_PATTERN, Entity, Slug
-from rkgk.domain.chunk import Chunk
-from rkgk.domain.extraction import (
+from rkgk.domain.models.base import SLUG_PATTERN, Entity, Slug
+from rkgk.domain.models.chunk import Chunk
+from rkgk.domain.models.extraction import (
     EXTRACTION_SCHEMA_VERSION,
     LOCAL_CONCEPT_ID_PATTERN,
     ExtractedConcept,
@@ -21,8 +21,8 @@ from rkgk.domain.extraction import (
     check_extraction_against_paper,
     normalize_whitespace,
 )
-from rkgk.domain.graph import Concept, ConceptEdge, Evidence, PaperConceptEdge
-from rkgk.domain.paper import (
+from rkgk.domain.models.graph import Concept, ConceptEdge, Evidence, PaperConceptEdge
+from rkgk.domain.models.paper import (
     MARKER_PATTERN,
     MarkerKind,
     Page,
@@ -34,19 +34,7 @@ from rkgk.domain.paper import (
     build_paper_dir_name,
     parse_page,
 )
-from rkgk.domain.repositories import (
-    ExtractionArtifactInvalidError,
-    ExtractionArtifactUnreadableError,
-    ExtractionNotFoundError,
-    ExtractionRepository,
-    ExtractionRepositoryError,
-    PaperArtifactInvalidError,
-    PaperArtifactUnreadableError,
-    PaperNotFoundError,
-    PaperRepository,
-    PaperRepositoryError,
-)
-from rkgk.domain.vocabulary import (
+from rkgk.domain.models.vocabulary import (
     ConceptRelationSpec,
     ConceptRelationType,
     ConceptType,
@@ -59,6 +47,20 @@ from rkgk.domain.vocabulary import (
     traversable_concept_relations,
     traversable_concept_types,
     traversable_paper_relations,
+)
+from rkgk.domain.repositories.extraction import (
+    ExtractionArtifactInvalidError,
+    ExtractionArtifactUnreadableError,
+    ExtractionNotFoundError,
+    ExtractionRepository,
+    ExtractionRepositoryError,
+)
+from rkgk.domain.repositories.paper import (
+    PaperArtifactInvalidError,
+    PaperArtifactUnreadableError,
+    PaperNotFoundError,
+    PaperRepository,
+    PaperRepositoryError,
 )
 
 DOMAIN_MODEL_VERSION = 1

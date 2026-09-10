@@ -9,9 +9,9 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from rkgk.domain.extraction import ExtractionResult
-from rkgk.domain.paper import build_paper_dir_name
-from rkgk.domain.repositories import (
+from rkgk.domain.models.extraction import ExtractionResult
+from rkgk.domain.models.paper import build_paper_dir_name
+from rkgk.domain.repositories.extraction import (
     ExtractionArtifactInvalidError,
     ExtractionArtifactUnreadableError,
     ExtractionNotFoundError,

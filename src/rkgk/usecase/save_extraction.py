@@ -1,7 +1,8 @@
 """Use case that stores an extraction payload once it has been validated."""
 
-from rkgk.domain.extraction import ExtractionResult
-from rkgk.domain.repositories import ExtractionRepository, PaperRepository
+from rkgk.domain.models.extraction import ExtractionResult
+from rkgk.domain.repositories.extraction import ExtractionRepository
+from rkgk.domain.repositories.paper import PaperRepository
 from rkgk.usecase.validate_extraction import ValidateExtractionUseCase
 
 

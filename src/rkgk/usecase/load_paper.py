@@ -1,7 +1,7 @@
 """Use case that reads one paper with its pages."""
 
-from rkgk.domain.paper import Paper
-from rkgk.domain.repositories import PaperRepository
+from rkgk.domain.models.paper import Paper
+from rkgk.domain.repositories.paper import PaperRepository
 
 
 class LoadPaperUseCase:

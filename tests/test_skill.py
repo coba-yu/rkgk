@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from rkgk.domain.vocabulary import describe_vocabulary
+from rkgk.domain.models.vocabulary import describe_vocabulary
 
 REPOSITORY_ROOT = Path(__file__).parent.parent
 AGENT_SKILL_PATH = REPOSITORY_ROOT / ".agents" / "skills" / "extract" / "SKILL.md"

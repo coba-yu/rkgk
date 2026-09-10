@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 import pytest
 from pydantic import ValidationError
 
-from rkgk.domain.paper import MarkerKind, PaperMeta, PaperPreprocessInfo, parse_page
+from rkgk.domain.models.paper import MarkerKind, PaperMeta, PaperPreprocessInfo, parse_page
 
 PREPROCESS = PaperPreprocessInfo(tool="pymupdf", version="1.24.0", processed_at=datetime(2026, 1, 1, tzinfo=UTC))
 

@@ -2,9 +2,10 @@
 
 from datetime import UTC, datetime
 
-from rkgk.domain.extraction import ExtractionResult
-from rkgk.domain.paper import Page, Paper, PaperIndexEntry, PaperMeta, PaperPreprocessInfo
-from rkgk.domain.repositories import ExtractionNotFoundError, PaperNotFoundError
+from rkgk.domain.models.extraction import ExtractionResult
+from rkgk.domain.models.paper import Page, Paper, PaperIndexEntry, PaperMeta, PaperPreprocessInfo
+from rkgk.domain.repositories.extraction import ExtractionNotFoundError
+from rkgk.domain.repositories.paper import PaperNotFoundError
 
 PREPROCESS = PaperPreprocessInfo(tool="pymupdf", version="1.24.0", processed_at=datetime(2026, 1, 1, tzinfo=UTC))
 

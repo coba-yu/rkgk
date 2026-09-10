@@ -1,6 +1,6 @@
 import pytest
 
-from rkgk.domain.repositories import PaperRepositoryError
+from rkgk.domain.repositories.paper import PaperRepositoryError
 from rkgk.usecase.load_paper import LoadPaperUseCase
 from tests.usecase.fakes import FakePaperRepository, build_paper
 

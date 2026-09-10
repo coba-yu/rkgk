@@ -2,13 +2,13 @@
 
 from pydantic import ValidationError
 
-from rkgk.domain.extraction import (
+from rkgk.domain.models.extraction import (
     ExtractionIssue,
     ExtractionResult,
     ExtractionValidationError,
     check_extraction_against_paper,
 )
-from rkgk.domain.repositories import PaperRepository
+from rkgk.domain.repositories.paper import PaperRepository
 
 
 def _format_path(location: tuple[int | str, ...]) -> str:
