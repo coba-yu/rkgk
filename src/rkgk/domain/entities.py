@@ -20,7 +20,7 @@ class Entity(BaseModel):
     model_config = ConfigDict(frozen=True, extra="forbid")
 
 
-class PreprocessInfo(Entity):
+class PaperPreprocessInfo(Entity):
     tool: str
     version: str
     processed_at: datetime
@@ -35,7 +35,7 @@ class PaperMeta(Entity):
     page_count: int = Field(ge=1)
     doi: str | None = None
     arxiv_id: str | None = None
-    preprocess: PreprocessInfo
+    preprocess: PaperPreprocessInfo
 
     @property
     def dir_name(self) -> str:

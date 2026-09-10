@@ -13,7 +13,7 @@ from rkgk.domain.entities import (
     Evidence,
     PaperConcept,
     PaperMeta,
-    PreprocessInfo,
+    PaperPreprocessInfo,
     Slug,
 )
 from rkgk.domain.vocabulary import (
@@ -50,7 +50,7 @@ __all__ = [
     "PaperConcept",
     "PaperConceptRelation",
     "PaperMeta",
-    "PreprocessInfo",
+    "PaperPreprocessInfo",
     "RelationSpec",
     "Slug",
     "describe_vocabulary",

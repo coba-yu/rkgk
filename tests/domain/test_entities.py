@@ -10,11 +10,11 @@ from rkgk.domain.entities import (
     Evidence,
     PaperConcept,
     PaperMeta,
-    PreprocessInfo,
+    PaperPreprocessInfo,
 )
 from rkgk.domain.vocabulary import ConceptRelationType, ConceptType, Origin, PaperConceptRelation
 
-PREPROCESS = PreprocessInfo(tool="pymupdf", version="1.24.0", processed_at=datetime(2026, 1, 1, tzinfo=UTC))
+PREPROCESS = PaperPreprocessInfo(tool="pymupdf", version="1.24.0", processed_at=datetime(2026, 1, 1, tzinfo=UTC))
 EVIDENCE = Evidence(page=3, quote="we propose a retrieval augmented generation pipeline")
 
 
