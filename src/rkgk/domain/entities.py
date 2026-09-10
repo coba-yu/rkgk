@@ -131,7 +131,7 @@ class Chunk(Entity):
         return f"{paper_id}:{seq}"
 
     @classmethod
-    def make(cls, paper_id: int, seq: int, page_start: int, page_end: int, text: str) -> Self:
+    def create(cls, paper_id: int, seq: int, page_start: int, page_end: int, text: str) -> Self:
         return cls(
             id=cls.build_id(paper_id, seq),
             paper_id=paper_id,

@@ -156,7 +156,7 @@ def test_concept_relation_accepts_general_knowledge_without_paper_id_or_evidence
 
 
 def test_chunk_make_builds_the_id() -> None:
-    chunk = Chunk.make(paper_id=7, seq=3, page_start=2, page_end=3, text="body text")
+    chunk = Chunk.create(paper_id=7, seq=3, page_start=2, page_end=3, text="body text")
     assert chunk.id == "7:3"
 
 
