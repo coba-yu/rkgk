@@ -1,4 +1,4 @@
-.PHONY: test lint fmt skills
+.PHONY: test lint fmt
 
 test:
 	uv run pytest
@@ -8,6 +8,3 @@ lint:
 
 fmt:
 	uv run ruff format .
-
-skills:
-	rm -rf .claude/skills && mkdir -p .claude && cp -R .agents/skills .claude/skills

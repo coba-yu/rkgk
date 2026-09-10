@@ -1,0 +1,49 @@
+"""Use case that extracts one paper with an agent and stores the result."""
+
+from rkgk.domain.models.extraction import (
+    ExtractionIssue,
+    ExtractionOutcome,
+    ExtractionValidationError,
+    Extractor,
+    build_extraction_prompt,
+    build_extraction_schema,
+)
+from rkgk.domain.repositories.extraction import ExtractionRepository
+from rkgk.domain.repositories.paper import PaperRepository
+from rkgk.usecase.validate_extraction import ValidateExtractionUseCase
+
+
+class ExtractPaperUseCase:
+    def __init__(
+        self,
+        paper_repository: PaperRepository,
+        extractor: Extractor,
+        extraction_repository: ExtractionRepository,
+        max_attempts: int = 3,
+    ) -> None:
+        self._paper_repository = paper_repository
+        self._extractor = extractor
+        self._extraction_repository = extraction_repository
+        self._validate = ValidateExtractionUseCase(paper_repository)
+        self._max_attempts = max_attempts
+
+    def execute(self, paper_id: int) -> ExtractionOutcome:
+        """Ask the agent until its answer survives validation, then store it."""
+        paper = self._paper_repository.find(paper_id)
+        schema = build_extraction_schema()
+        attempts = 0
+        previous: object | None = None
+        issues: tuple[ExtractionIssue, ...] = ()
+        while True:
+            attempts += 1
+            payload = self._extractor.extract(build_extraction_prompt(paper, previous, issues), schema)
+            try:
+                result = self._validate.execute(paper_id, payload)
+            except ExtractionValidationError as error:
+                # The agent sees its own answer and what was wrong with it, so a retry corrects rather than reruns.
+                if attempts >= self._max_attempts:
+                    raise
+                previous, issues = payload, error.issues
+                continue
+            self._extraction_repository.save(result)
+            return ExtractionOutcome(result=result, attempts=attempts)
