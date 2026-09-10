@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 import pytest
 
 from rkgk.domain.paper import Page, Paper, PaperIndexEntry, PaperMeta, PaperPreprocessInfo
-from rkgk.domain.repositories import PaperRepositoryError
+from rkgk.domain.repositories import PaperNotFoundError, PaperRepositoryError
 from rkgk.usecase.load_paper import LoadPaperUseCase
 
 PREPROCESS = PaperPreprocessInfo(tool="pymupdf", version="1.24.0", processed_at=datetime(2026, 1, 1, tzinfo=UTC))
@@ -28,7 +28,7 @@ class FakePaperRepository:
 
     def find(self, paper_id: int) -> Paper:
         if paper_id not in self._papers:
-            raise PaperRepositoryError(f"paper {paper_id}: paper directory not found")
+            raise PaperNotFoundError(f"paper {paper_id}: paper directory not found", paper_id=paper_id)
         return self._papers[paper_id]
 
 

@@ -19,7 +19,13 @@ from rkgk.domain.paper import (
     build_paper_dir_name,
     parse_page,
 )
-from rkgk.domain.repositories import PaperRepository, PaperRepositoryError
+from rkgk.domain.repositories import (
+    PaperArtifactInvalidError,
+    PaperArtifactUnreadableError,
+    PaperNotFoundError,
+    PaperRepository,
+    PaperRepositoryError,
+)
 from rkgk.domain.vocabulary import (
     ConceptRelationSpec,
     ConceptRelationType,
@@ -61,6 +67,9 @@ __all__ = [
     "PaperIndexEntry",
     "PaperMeta",
     "PaperPreprocessInfo",
+    "PaperArtifactInvalidError",
+    "PaperArtifactUnreadableError",
+    "PaperNotFoundError",
     "PaperRepository",
     "PaperRepositoryError",
     "RelationSpec",

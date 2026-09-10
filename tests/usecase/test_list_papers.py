@@ -1,7 +1,7 @@
 import pytest
 
 from rkgk.domain.paper import Paper, PaperIndexEntry
-from rkgk.domain.repositories import PaperRepositoryError
+from rkgk.domain.repositories import PaperNotFoundError, PaperRepositoryError
 from rkgk.usecase.list_papers import ListPapersUseCase
 
 ENTRIES = (
@@ -20,7 +20,7 @@ class FakePaperRepository:
         return self._entries
 
     def find(self, paper_id: int) -> Paper:
-        raise PaperRepositoryError(f"paper {paper_id}: paper directory not found")
+        raise PaperNotFoundError(f"paper {paper_id}: paper directory not found", paper_id=paper_id)
 
 
 def test_execute_returns_the_entries_the_repository_holds() -> None:

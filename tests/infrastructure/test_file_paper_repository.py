@@ -5,7 +5,12 @@ from pathlib import Path
 import pytest
 
 from rkgk.domain.paper import MarkerKind
-from rkgk.domain.repositories import PaperRepositoryError
+from rkgk.domain.repositories import (
+    PaperArtifactInvalidError,
+    PaperArtifactUnreadableError,
+    PaperNotFoundError,
+    PaperRepositoryError,
+)
 from rkgk.infrastructure.file_paper_repository import FilePaperRepository, build_page_file_name
 
 FIXTURE_DIR = Path(__file__).parent.parent / "fixtures"
@@ -34,25 +39,25 @@ def test_index_lists_every_entry_in_file_order() -> None:
 def test_index_entry_may_have_no_artifacts_yet() -> None:
     repository = FilePaperRepository(FIXTURE_DIR)
     assert repository.find_index()[1].id == 2
-    with pytest.raises(PaperRepositoryError):
+    with pytest.raises(PaperNotFoundError):
         repository.find(2)
 
 
 def test_index_rejects_duplicate_ids(data_dir: Path) -> None:
     write_index(data_dir, json.dumps({"papers": [{"id": 1, "title": "A"}, {"id": 1, "title": "B"}]}))
-    with pytest.raises(PaperRepositoryError, match="duplicate paper id 1"):
+    with pytest.raises(PaperArtifactInvalidError, match="duplicate paper id 1"):
         FilePaperRepository(data_dir).find_index()
 
 
 def test_index_rejects_invalid_json(data_dir: Path) -> None:
     write_index(data_dir, "{not json")
-    with pytest.raises(PaperRepositoryError, match="index.json"):
+    with pytest.raises(PaperArtifactInvalidError, match="index.json"):
         FilePaperRepository(data_dir).find_index()
 
 
 def test_index_rejects_entry_without_title(data_dir: Path) -> None:
     write_index(data_dir, json.dumps({"papers": [{"id": 1}]}))
-    with pytest.raises(PaperRepositoryError):
+    with pytest.raises(PaperArtifactInvalidError):
         FilePaperRepository(data_dir).find_index()
 
 
@@ -85,13 +90,13 @@ def test_first_page_has_no_markers() -> None:
 
 def test_missing_paper_directory_is_reported(data_dir: Path) -> None:
     shutil.rmtree(data_dir / "papers" / "0001")
-    with pytest.raises(PaperRepositoryError, match="paper 1"):
+    with pytest.raises(PaperNotFoundError, match="paper 1"):
         FilePaperRepository(data_dir).find(1)
 
 
 def test_missing_paper_json_is_reported(data_dir: Path) -> None:
     (data_dir / "papers" / "0001" / "paper.json").unlink()
-    with pytest.raises(PaperRepositoryError, match="paper.json"):
+    with pytest.raises(PaperNotFoundError, match="paper.json"):
         FilePaperRepository(data_dir).find(1)
 
 
@@ -100,31 +105,31 @@ def test_paper_json_with_a_different_id_is_reported(data_dir: Path) -> None:
     payload = json.loads(path.read_text(encoding="utf-8"))
     payload["id"] = 7
     path.write_text(json.dumps(payload), encoding="utf-8")
-    with pytest.raises(PaperRepositoryError, match="does not match"):
+    with pytest.raises(PaperArtifactInvalidError, match="does not match"):
         FilePaperRepository(data_dir).find(1)
 
 
 def test_missing_pages_directory_is_reported(data_dir: Path) -> None:
     shutil.rmtree(data_dir / "papers" / "0001" / "pages")
-    with pytest.raises(PaperRepositoryError, match="pages"):
+    with pytest.raises(PaperArtifactInvalidError, match="pages"):
         FilePaperRepository(data_dir).find(1)
 
 
 def test_missing_page_file_is_reported_by_name(data_dir: Path) -> None:
     (data_dir / "papers" / "0001" / "pages" / "002.md").unlink()
-    with pytest.raises(PaperRepositoryError, match="002.md"):
+    with pytest.raises(PaperArtifactInvalidError, match="002.md"):
         FilePaperRepository(data_dir).find(1)
 
 
 def test_page_file_beyond_page_count_is_reported_by_name(data_dir: Path) -> None:
     (data_dir / "papers" / "0001" / "pages" / "004.md").write_text("extra page\n", encoding="utf-8")
-    with pytest.raises(PaperRepositoryError, match="004.md"):
+    with pytest.raises(PaperArtifactInvalidError, match="004.md"):
         FilePaperRepository(data_dir).find(1)
 
 
 def test_stray_file_in_pages_is_reported_by_name(data_dir: Path) -> None:
     (data_dir / "papers" / "0001" / "pages" / "notes.txt").write_text("scratch\n", encoding="utf-8")
-    with pytest.raises(PaperRepositoryError, match="notes.txt"):
+    with pytest.raises(PaperArtifactInvalidError, match="notes.txt"):
         FilePaperRepository(data_dir).find(1)
 
 
@@ -133,7 +138,7 @@ def test_page_count_larger_than_the_page_files_is_reported(data_dir: Path) -> No
     payload = json.loads(path.read_text(encoding="utf-8"))
     payload["page_count"] = 4
     path.write_text(json.dumps(payload), encoding="utf-8")
-    with pytest.raises(PaperRepositoryError, match="004.md"):
+    with pytest.raises(PaperArtifactInvalidError, match="004.md"):
         FilePaperRepository(data_dir).find(1)
 
 
@@ -145,20 +150,20 @@ def test_page_file_name_is_zero_padded_without_truncation(number: int, expected:
 def test_invalid_marker_number_is_reported_with_paper_id_and_path(data_dir: Path) -> None:
     page = data_dir / "papers" / "0001" / "pages" / "002.md"
     page.write_text("<!-- figure: 0 -->\nbody\n", encoding="utf-8")
-    with pytest.raises(PaperRepositoryError, match=r"paper 1: .*002\.md: has an invalid marker"):
+    with pytest.raises(PaperArtifactInvalidError, match=r"paper 1: .*002\.md: has an invalid marker"):
         FilePaperRepository(data_dir).find(1)
 
 
 def test_non_utf8_page_is_reported_with_paper_id_and_path(data_dir: Path) -> None:
     page = data_dir / "papers" / "0001" / "pages" / "003.md"
     page.write_bytes(b"\xff\xfe not utf-8")
-    with pytest.raises(PaperRepositoryError, match=r"paper 1: .*003\.md: is not valid UTF-8"):
+    with pytest.raises(PaperArtifactInvalidError, match=r"paper 1: .*003\.md: is not valid UTF-8"):
         FilePaperRepository(data_dir).find(1)
 
 
 def test_non_utf8_index_is_reported_with_path(data_dir: Path) -> None:
     (data_dir / "papers" / "index.json").write_bytes(b"\xff\xfe")
-    with pytest.raises(PaperRepositoryError, match=r"index\.json: is not valid UTF-8"):
+    with pytest.raises(PaperArtifactInvalidError, match=r"index\.json: is not valid UTF-8"):
         FilePaperRepository(data_dir).find_index()
 
 
@@ -168,5 +173,20 @@ def test_unlistable_pages_dir_is_reported(data_dir: Path, monkeypatch: pytest.Mo
         raise PermissionError(13, "Permission denied")
 
     monkeypatch.setattr(Path, "iterdir", _raise)
-    with pytest.raises(PaperRepositoryError, match=r"paper 1: .*pages: cannot be listed"):
+    with pytest.raises(PaperArtifactUnreadableError, match=r"paper 1: .*pages: cannot be listed"):
         FilePaperRepository(data_dir).find(1)
+
+
+def test_errors_carry_paper_id_and_location_as_attributes(data_dir: Path) -> None:
+    shutil.rmtree(data_dir / "papers" / "0001" / "pages")
+    with pytest.raises(PaperRepositoryError) as caught:
+        FilePaperRepository(data_dir).find(1)
+    assert caught.value.paper_id == 1
+    assert caught.value.location == str(data_dir / "papers" / "0001" / "pages")
+
+
+def test_missing_index_is_not_found_without_paper_id(data_dir: Path) -> None:
+    (data_dir / "papers" / "index.json").unlink()
+    with pytest.raises(PaperNotFoundError) as caught:
+        FilePaperRepository(data_dir).find_index()
+    assert caught.value.paper_id is None
