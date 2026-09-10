@@ -13,6 +13,9 @@ RAG と Knowledge Graph の技術理解が主目的である。
 ## コーディング規約
 
 - `from __future__ import annotations` は使わない。Python 3.13 以上のみ対象なので不要。
+- コードには How を書く。
+- テストコードには What を書く。
+- コードコメントには Why / Why not を書く。
 
 ## ドキュメント
 
