@@ -3,7 +3,9 @@ name = "rkgk"
 version = "0.1.0"
 description = "Research Knowledge Graph Kit"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "pydantic>=2.13.5",
+]
 
 [project.scripts]
 rkgk = "rkgk.cli:main"
