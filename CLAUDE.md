@@ -9,3 +9,9 @@ Research Knowledge Graph Kit。論文検索 RAG の MVP。
 ## コーディング規約
 
 - `from __future__ import annotations` は使わない。Python 3.13 以上のみ対象なので不要。
+
+## レビューコメントへの対応
+
+- コメント1件につき1コミット。まとめて直さない。
+- 各コメントにコミット URL を添えて返信する。
+- 設計に関わる指摘は、修正前に相談する。
