@@ -19,7 +19,14 @@ from rkgk.domain.models.concept_normalization import (
     NormalizedConcept,
     build_concept_normalization_schema,
 )
-from rkgk.domain.models.graph import Concept, ConceptEdge, Evidence, PaperConceptEdge
+from rkgk.domain.models.graph import (
+    Concept,
+    ConceptEdge,
+    Evidence,
+    EvidenceResolutionError,
+    PaperConceptEdge,
+    UnresolvedEvidence,
+)
 from rkgk.domain.models.paper import (
     MARKER_PATTERN,
     MarkerKind,
@@ -85,6 +92,7 @@ from rkgk.domain.repositories.paper_extraction import (
 )
 from rkgk.domain.services.chunking import DEFAULT_MAX_TOKENS, chunk_paper
 from rkgk.domain.services.concept_normalization import check_normalization_against_extractions
+from rkgk.domain.services.evidence_resolver import find_chunk, resolve_extraction_evidence
 from rkgk.domain.services.paper_extraction import check_extraction_against_paper, normalize_whitespace
 from rkgk.domain.services.validation import format_error_path
 from rkgk.domain.tokenizers import Tokenizer
@@ -117,6 +125,7 @@ __all__ = [
     "ConceptTypeSpec",
     "Entity",
     "Evidence",
+    "EvidenceResolutionError",
     "ExtractedConcept",
     "ExtractedConceptEdge",
     "ExtractedEvidence",
@@ -156,6 +165,7 @@ __all__ = [
     "StructuredOutputAgent",
     "StructuredOutputAgentError",
     "Tokenizer",
+    "UnresolvedEvidence",
     "build_concept_normalization_prompt",
     "build_concept_normalization_schema",
     "build_paper_dir_name",
@@ -165,9 +175,11 @@ __all__ = [
     "check_normalization_against_extractions",
     "chunk_paper",
     "describe_vocabulary",
+    "find_chunk",
     "format_error_path",
     "normalize_whitespace",
     "parse_page",
+    "resolve_extraction_evidence",
     "traversable_concept_relations",
     "traversable_concept_types",
     "traversable_paper_relations",
