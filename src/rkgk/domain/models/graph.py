@@ -183,7 +183,7 @@ class KnowledgeGraph(Entity):
             seen_concept_edges.add(edge_key)
         return self
 
-    def document_frequency(self, concept_id: str) -> float:
+    def compute_document_frequency(self, concept_id: str) -> float:
         """Share of the papers in the graph that hold the concept.
 
         Traversal compares it to a threshold to keep generic concepts from linking unrelated papers.

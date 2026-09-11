@@ -301,5 +301,5 @@ def test_document_frequency_is_the_paper_count_over_the_papers_of_the_graph() ->
     shared = Concept(id="rag", canonical_name="RAG", type=ConceptType.METHOD, paper_count=2)
     graph = build_graph(paper_ids=(1, 2, 3, 4), concepts=(GRAPH_RAG, shared))
 
-    assert graph.document_frequency("rag") == 0.5
-    assert graph.document_frequency("graph-rag") == 0.25
+    assert graph.compute_document_frequency("rag") == 0.5
+    assert graph.compute_document_frequency("graph-rag") == 0.25

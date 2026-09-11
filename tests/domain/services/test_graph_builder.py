@@ -15,7 +15,7 @@ from rkgk.domain.models.paper_extraction import (
     PaperExtraction,
 )
 from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType, Origin, PaperConceptRelation
-from rkgk.domain.services.graph_builder import build_knowledge_graph, paper_node_id, to_networkx
+from rkgk.domain.services.graph_builder import build_knowledge_graph, build_paper_node_id, to_networkx
 
 P1_PROPOSES = ExtractedEvidence(page=1, quote="we propose Graph RAG")
 P1_USES = ExtractedEvidence(page=2, quote="Graph RAG runs on the index we build")
@@ -160,7 +160,7 @@ def build_merged_extraction(
 
 
 def test_paper_node_id_prefixes_the_paper_id() -> None:
-    assert paper_node_id(3) == "paper:3"
+    assert build_paper_node_id(3) == "paper:3"
 
 
 def test_local_concept_ids_are_replaced_by_the_slug_on_paper_edges() -> None:
@@ -226,8 +226,8 @@ def test_paper_count_counts_one_paper_once_when_two_of_its_concepts_merged() -> 
 def test_document_frequency_is_the_share_of_the_papers_of_the_graph() -> None:
     graph = build()
 
-    assert graph.document_frequency("graph-rag") == 1.0
-    assert graph.document_frequency("hallucination") == 0.5
+    assert graph.compute_document_frequency("graph-rag") == 1.0
+    assert graph.compute_document_frequency("hallucination") == 0.5
 
 
 def test_paper_ids_follow_the_order_of_the_extractions() -> None:

@@ -17,14 +17,14 @@ from rkgk.domain.models.paper_extraction import ExtractedEvidence, PaperExtracti
 from rkgk.domain.models.vocabulary import ConceptRelationType, Origin, PaperConceptRelation
 
 
-def paper_node_id(paper_id: int) -> str:
+def build_paper_node_id(paper_id: int) -> str:
     """Render a paper id as the id of its node in the networkx view."""
     # Papers and concepts share one node namespace, and a slug cannot contain ':' (SLUG_PATTERN in
     # models/base.py), so this prefix can never collide with a concept id.
     return f"paper:{paper_id}"
 
 
-def _slug_for(slug_of: Mapping[tuple[int, str], str], paper_id: int, local_id: str) -> str:
+def _find_slug(slug_of: Mapping[tuple[int, str], str], paper_id: int, local_id: str) -> str:
     """Return the global slug the local concept of that paper was merged into."""
     slug = slug_of.get((paper_id, local_id))
     if slug is None:
@@ -32,7 +32,7 @@ def _slug_for(slug_of: Mapping[tuple[int, str], str], paper_id: int, local_id: s
     return slug
 
 
-def _resolved_evidence_of(
+def _find_resolved_evidence(
     resolved_evidence: Mapping[int, Mapping[ExtractedEvidence, Evidence]],
     paper_id: int,
     extracted: Sequence[ExtractedEvidence],
@@ -48,7 +48,7 @@ def _resolved_evidence_of(
     return tuple(items)
 
 
-def _union(existing: tuple[Evidence, ...], added: tuple[Evidence, ...]) -> tuple[Evidence, ...]:
+def _merge_evidence(existing: tuple[Evidence, ...], added: tuple[Evidence, ...]) -> tuple[Evidence, ...]:
     """Append the evidence that is not there yet, keeping the order of first occurrence."""
     merged = list(existing)
     for item in added:
@@ -92,23 +92,23 @@ def build_knowledge_graph(
     for extraction in extractions:
         paper_id = extraction.paper_id
         for edge in extraction.paper_concepts:
-            key = (paper_id, _slug_for(slug_of, paper_id, edge.concept_id), edge.relation)
+            key = (paper_id, _find_slug(slug_of, paper_id, edge.concept_id), edge.relation)
             # Two local concepts of one paper can share a slug, and `KnowledgeGraph` rejects a repeated
             # (paper, concept, relation) edge; both sets of quotes justify the one relation, so they merge.
-            paper_edges[key] = _union(
-                paper_edges.get(key, ()), _resolved_evidence_of(resolved_evidence, paper_id, edge.evidence)
+            paper_edges[key] = _merge_evidence(
+                paper_edges.get(key, ()), _find_resolved_evidence(resolved_evidence, paper_id, edge.evidence)
             )
         for relation in extraction.concept_relations:
-            source_id = _slug_for(slug_of, paper_id, relation.source_id)
-            target_id = _slug_for(slug_of, paper_id, relation.target_id)
+            source_id = _find_slug(slug_of, paper_id, relation.source_id)
+            target_id = _find_slug(slug_of, paper_id, relation.target_id)
             if source_id == target_id:
                 # Not an error: the normalizer merged both ends on purpose, so the relation now says a concept
                 # relates to itself and carries nothing; raising would block the whole build over that choice.
                 continue
             relation_key = (source_id, target_id, relation.relation, paper_id)
-            concept_edges[relation_key] = _union(
+            concept_edges[relation_key] = _merge_evidence(
                 concept_edges.get(relation_key, ()),
-                _resolved_evidence_of(resolved_evidence, paper_id, relation.evidence),
+                _find_resolved_evidence(resolved_evidence, paper_id, relation.evidence),
             )
 
     paper_concepts = tuple(
@@ -156,7 +156,7 @@ def to_networkx(graph: KnowledgeGraph) -> nx.MultiDiGraph:
     """
     view: nx.MultiDiGraph = nx.MultiDiGraph()
     for paper_id in graph.paper_ids:
-        view.add_node(paper_node_id(paper_id), kind="paper", paper_id=paper_id)
+        view.add_node(build_paper_node_id(paper_id), kind="paper", paper_id=paper_id)
     for concept in graph.concepts:
         view.add_node(
             concept.id,
@@ -164,11 +164,11 @@ def to_networkx(graph: KnowledgeGraph) -> nx.MultiDiGraph:
             canonical_name=concept.canonical_name,
             type=concept.type,
             paper_count=concept.paper_count,
-            document_frequency=graph.document_frequency(concept.id),
+            document_frequency=graph.compute_document_frequency(concept.id),
         )
     for edge in graph.paper_concepts:
         view.add_edge(
-            paper_node_id(edge.paper_id),
+            build_paper_node_id(edge.paper_id),
             edge.concept_id,
             key=edge.relation.value,
             relation=edge.relation,
