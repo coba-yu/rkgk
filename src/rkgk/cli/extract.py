@@ -15,7 +15,7 @@ from rkgk.domain.models.paper_extraction import (
     PaperExtraction,
     PaperExtractionIssue,
     PaperExtractionValidationError,
-    build_extraction_schema,
+    build_paper_extraction_schema,
 )
 from rkgk.domain.repositories.extraction import ExtractionRepositoryError
 from rkgk.domain.repositories.paper import PaperRepositoryError
@@ -57,7 +57,7 @@ def register(subparsers: argparse._SubParsersAction) -> None:
 
 
 def _run_schema(_args: argparse.Namespace) -> int:
-    print(json.dumps(build_extraction_schema(), indent=2, ensure_ascii=False))
+    print(json.dumps(build_paper_extraction_schema(), indent=2, ensure_ascii=False))
     return EXIT_OK
 
 

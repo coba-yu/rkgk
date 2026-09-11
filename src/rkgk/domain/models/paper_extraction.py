@@ -183,7 +183,7 @@ def check_extraction_against_paper(result: PaperExtraction, paper: Paper) -> tup
     return tuple(issues)
 
 
-def build_extraction_schema() -> dict[str, object]:
+def build_paper_extraction_schema() -> dict[str, object]:
     """Render the schema an agent must follow; it is generated so the prompt can never drift from the model."""
     return PaperExtraction.model_json_schema()
 
@@ -215,7 +215,7 @@ def _identifier_rules(paper_id: int) -> tuple[str, ...]:
     )
 
 
-def build_extraction_prompt(
+def build_paper_extraction_prompt(
     paper: Paper, previous: object | None = None, issues: tuple[PaperExtractionIssue, ...] = ()
 ) -> str:
     """Write the instructions and the paper text an agent needs to extract this one paper.

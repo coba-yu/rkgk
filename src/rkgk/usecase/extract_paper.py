@@ -5,8 +5,8 @@ from rkgk.domain.models.paper_extraction import (
     PaperExtractionIssue,
     PaperExtractionRun,
     PaperExtractionValidationError,
-    build_extraction_prompt,
-    build_extraction_schema,
+    build_paper_extraction_prompt,
+    build_paper_extraction_schema,
 )
 from rkgk.domain.repositories.extraction import ExtractionRepository
 from rkgk.domain.repositories.paper import PaperRepository
@@ -30,13 +30,13 @@ class ExtractPaperUseCase:
     def execute(self, paper_id: int) -> PaperExtractionRun:
         """Ask the agent until its answer survives validation, then store it."""
         paper = self._paper_repository.find(paper_id)
-        schema = build_extraction_schema()
+        schema = build_paper_extraction_schema()
         attempts = 0
         previous: object | None = None
         issues: tuple[PaperExtractionIssue, ...] = ()
         while True:
             attempts += 1
-            payload = self._agent.answer(build_extraction_prompt(paper, previous, issues), schema)
+            payload = self._agent.answer(build_paper_extraction_prompt(paper, previous, issues), schema)
             try:
                 result = self._validate.execute(paper_id, payload)
             except PaperExtractionValidationError as error:
