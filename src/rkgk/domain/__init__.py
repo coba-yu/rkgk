@@ -60,8 +60,8 @@ from rkgk.domain.models.vocabulary import (
     traversable_concept_types,
     traversable_paper_relations,
 )
-from rkgk.domain.prompts.concept_normalization import build_concept_normalization_prompt
-from rkgk.domain.prompts.paper_extraction import build_paper_extraction_prompt
+from rkgk.domain.prompts.concept_normalization.builder import build_concept_normalization_prompt
+from rkgk.domain.prompts.paper_extraction.builder import build_paper_extraction_prompt
 from rkgk.domain.repositories.concept_normalization import (
     ConceptNormalizationArtifactInvalidError,
     ConceptNormalizationArtifactUnreadableError,

@@ -12,7 +12,7 @@ from rkgk.domain.models.concept_normalization import (
     build_concept_normalization_schema,
 )
 from rkgk.domain.models.paper_extraction import PaperExtraction
-from rkgk.domain.prompts.concept_normalization import build_concept_normalization_prompt
+from rkgk.domain.prompts.concept_normalization.builder import build_concept_normalization_prompt
 from rkgk.domain.repositories.concept_normalization import ConceptNormalizationRepository
 from rkgk.domain.repositories.paper import PaperRepository
 from rkgk.domain.repositories.paper_extraction import PaperExtractionNotFoundError, PaperExtractionRepository

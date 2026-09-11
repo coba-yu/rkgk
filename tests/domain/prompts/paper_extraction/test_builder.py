@@ -2,12 +2,12 @@ import json
 from pathlib import Path
 
 from rkgk.domain.models.paper import Paper, PaperMeta, parse_page
-from rkgk.domain.models.paper_extraction import EXTRACTION_SCHEMA_VERSION, PaperExtractionIssue
+from rkgk.domain.models.paper_extraction import PaperExtractionIssue
 from rkgk.domain.models.vocabulary import describe_vocabulary
-from rkgk.domain.prompts.paper_extraction import build_paper_extraction_prompt
+from rkgk.domain.prompts.paper_extraction.builder import build_paper_extraction_prompt
 
-FIXTURE_DIR = Path(__file__).parent.parent.parent / "fixtures"
-PROMPT_SNAPSHOT_PATH = Path(__file__).parent / "snapshots" / "paper_extraction_prompt.md"
+FIXTURE_DIR = Path(__file__).parent.parent.parent.parent / "fixtures"
+PROMPT_SNAPSHOT_PATH = Path(__file__).parent / "snapshots" / "prompt.md"
 
 
 def load_fixture_paper() -> Paper:
@@ -32,8 +32,8 @@ def test_the_prompt_is_deterministic() -> None:
 def test_the_prompt_carries_the_vocabulary_and_the_paper_id() -> None:
     prompt = build_paper_extraction_prompt(load_fixture_paper())
     assert describe_vocabulary().rstrip("\n") in prompt
-    assert "`paper_id` に 1 を設定する。" in prompt
-    assert f"`schema_version` に {EXTRACTION_SCHEMA_VERSION} を設定する。" in prompt
+    assert "Id: 1" in prompt
+    assert "`paper_id` には `## Paper` に示した Id を設定する。" in prompt
 
 
 def test_the_prompt_holds_every_page_with_its_number_and_text() -> None:

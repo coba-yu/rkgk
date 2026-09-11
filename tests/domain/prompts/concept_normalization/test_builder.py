@@ -1,9 +1,9 @@
 from pathlib import Path
 
-from rkgk.domain.models.concept_normalization import CONCEPT_NORMALIZATION_SCHEMA_VERSION, ConceptNormalizationIssue
+from rkgk.domain.models.concept_normalization import ConceptNormalizationIssue
 from rkgk.domain.models.paper_extraction import ExtractedConcept, PaperExtraction
 from rkgk.domain.models.vocabulary import ConceptType, describe_vocabulary
-from rkgk.domain.prompts.concept_normalization import build_concept_normalization_prompt
+from rkgk.domain.prompts.concept_normalization.builder import build_concept_normalization_prompt
 
 EXTRACTIONS = (
     PaperExtraction(
@@ -40,7 +40,7 @@ EXTRACTIONS = (
     ),
 )
 
-PROMPT_SNAPSHOT_PATH = Path(__file__).parent / "snapshots" / "concept_normalization_prompt.md"
+PROMPT_SNAPSHOT_PATH = Path(__file__).parent / "snapshots" / "prompt.md"
 
 
 def test_the_prompt_for_the_extractions_matches_the_snapshot() -> None:
@@ -51,10 +51,9 @@ def test_the_prompt_is_deterministic() -> None:
     assert build_concept_normalization_prompt(EXTRACTIONS) == build_concept_normalization_prompt(EXTRACTIONS)
 
 
-def test_the_prompt_carries_the_vocabulary_and_the_schema_version() -> None:
+def test_the_prompt_carries_the_vocabulary() -> None:
     prompt = build_concept_normalization_prompt(EXTRACTIONS)
     assert describe_vocabulary().rstrip("\n") in prompt
-    assert f"`schema_version` に {CONCEPT_NORMALIZATION_SCHEMA_VERSION} を設定する。" in prompt
 
 
 def test_the_prompt_lists_every_paper_with_its_concepts_aliases_and_description() -> None:
