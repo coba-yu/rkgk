@@ -1,15 +1,19 @@
-"""The `extract` command: everything that happens to the extraction JSON of one paper.
+"""The CLI entry point for rkgk and the `extract` command.
 
-`run` drives the whole extraction with Claude and stores the result, while `schema`, `validate` and `save`
-expose the single steps for a payload that was produced by hand or by another tool.
+`main` builds the parser and dispatches to a subcommand, and `extract` is the only command so far: `run` drives
+the whole extraction with Claude and stores the result, while `schema`, `validate` and `save` expose the single
+steps for a payload that was produced by hand or by another tool.
+
+A command prints one JSON object on stdout and reports the outcome as an exit code, so an agent can branch on the
+code and read the details from the same output without parsing prose.
 """
 
 import argparse
 import json
 from collections.abc import Callable
+from importlib.metadata import version
 from pathlib import Path
 
-from rkgk.cli._output import EXIT_ERROR, EXIT_INVALID, EXIT_OK, print_json
 from rkgk.domain.agents import StructuredOutputAgentError
 from rkgk.domain.models.paper_extraction import (
     PaperExtraction,
@@ -26,11 +30,19 @@ from rkgk.usecase.extract_paper import ExtractPaperUseCase
 from rkgk.usecase.save_paper_extraction import SavePaperExtractionUseCase
 from rkgk.usecase.validate_paper_extraction import ValidatePaperExtractionUseCase
 
+EXIT_OK = 0
+EXIT_INVALID = 1
+EXIT_ERROR = 2
+
 NAME = "extract"
 HELP = "describe, check, or store the extraction JSON an agent wrote for one paper"
 
 DEFAULT_DATA_DIR = Path("data")
 DEFAULT_MAX_ATTEMPTS = 3
+
+
+def print_json(payload: dict[str, object]) -> None:
+    print(json.dumps(payload, ensure_ascii=False))
 
 
 def register(subparsers: argparse._SubParsersAction) -> None:
@@ -138,3 +150,24 @@ def _render_result(result: PaperExtraction) -> dict[str, object]:
         "paper_concepts": len(result.paper_concepts),
         "concept_relations": len(result.concept_relations),
     }
+
+
+def _build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(prog="rkgk")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {version('rkgk')}",
+    )
+    subparsers = parser.add_subparsers(dest="command")
+    register(subparsers)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = _build_parser()
+    args = parser.parse_args(argv)
+    if not hasattr(args, "func"):
+        parser.print_help()
+        return EXIT_ERROR
+    return args.func(args)

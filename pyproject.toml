@@ -8,7 +8,7 @@ dependencies = [
 ]
 
 [project.scripts]
-rkgk = "rkgk.cli:main"
+rkgk = "rkgk.cli.extract:main"
 
 [build-system]
 requires = ["hatchling"]
