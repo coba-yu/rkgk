@@ -83,8 +83,12 @@ def _run_run(args: argparse.Namespace) -> int:
     except (ExtractorError, PaperRepositoryError, ExtractionRepositoryError) as error:
         print_json({"status": "error", "message": str(error)})
         return EXIT_ERROR
-    payload: dict[str, object] = {"status": "ok", "paper_id": outcome.result.paper_id, "attempts": outcome.attempts}
-    payload.update(_render_result(outcome.result))
+    payload: dict[str, object] = {
+        "status": "ok",
+        "paper_id": outcome.extraction.paper_id,
+        "attempts": outcome.attempts,
+    }
+    payload.update(_render_result(outcome.extraction))
     payload["path"] = str(extraction_repository.path_for(args.paper_id))
     print_json(payload)
     return EXIT_OK

@@ -60,7 +60,7 @@ def test_an_answer_that_passes_validation_is_saved_after_one_attempt() -> None:
     saved = FakeExtractionRepository()
     outcome = build_use_case(FakeExtractor(VALID_PAYLOAD), saved).execute(1)
     assert outcome.attempts == 1
-    assert saved.saved == [outcome.result]
+    assert saved.saved == [outcome.extraction]
 
 
 def test_a_rejected_answer_is_retried_and_the_attempts_are_counted() -> None:
@@ -68,7 +68,7 @@ def test_a_rejected_answer_is_retried_and_the_attempts_are_counted() -> None:
     extractor = FakeExtractor(INVALID_PAYLOAD, VALID_PAYLOAD)
     outcome = build_use_case(extractor, saved).execute(1)
     assert outcome.attempts == 2
-    assert saved.saved == [outcome.result]
+    assert saved.saved == [outcome.extraction]
 
 
 def test_the_retry_shows_the_agent_its_rejected_answer_and_the_issues() -> None:

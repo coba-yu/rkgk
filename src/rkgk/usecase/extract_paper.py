@@ -2,9 +2,9 @@
 
 from rkgk.domain.models.paper_extraction import (
     ExtractionIssue,
-    ExtractionOutcome,
     ExtractionValidationError,
     Extractor,
+    PaperExtractionRun,
     build_extraction_prompt,
     build_extraction_schema,
 )
@@ -27,7 +27,7 @@ class ExtractPaperUseCase:
         self._validate = ValidateExtractionUseCase(paper_repository)
         self._max_attempts = max_attempts
 
-    def execute(self, paper_id: int) -> ExtractionOutcome:
+    def execute(self, paper_id: int) -> PaperExtractionRun:
         """Ask the agent until its answer survives validation, then store it."""
         paper = self._paper_repository.find(paper_id)
         schema = build_extraction_schema()
@@ -46,4 +46,4 @@ class ExtractPaperUseCase:
                 previous, issues = payload, error.issues
                 continue
             self._extraction_repository.save(result)
-            return ExtractionOutcome(result=result, attempts=attempts)
+            return PaperExtractionRun(extraction=result, attempts=attempts)

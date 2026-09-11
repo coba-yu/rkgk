@@ -272,10 +272,10 @@ def build_extraction_prompt(
     return "\n".join(lines) + "\n"
 
 
-class ExtractionOutcome(Entity):
+class PaperExtractionRun(Entity):
     """What one extraction run produced, with the number of attempts it took to pass validation."""
 
-    result: PaperExtraction
+    extraction: PaperExtraction
     attempts: int = Field(ge=1)
 
 
