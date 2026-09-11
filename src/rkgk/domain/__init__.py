@@ -5,8 +5,9 @@ so an index built with an older model can be detected and rebuilt.
 """
 
 from rkgk.domain.agents import StructuredOutputAgent, StructuredOutputAgentError
+from rkgk.domain.embedders import Embedder, EmbedderError
 from rkgk.domain.models.base import SLUG_PATTERN, Entity, Slug
-from rkgk.domain.models.chunk import Chunk
+from rkgk.domain.models.chunk import CHUNK_ID_PATTERN, Chunk
 from rkgk.domain.models.concept_normalization import (
     CONCEPT_NORMALIZATION_SCHEMA_VERSION,
     ConceptNormalization,
@@ -19,6 +20,7 @@ from rkgk.domain.models.concept_normalization import (
     NormalizedConcept,
     build_concept_normalization_schema,
 )
+from rkgk.domain.models.embedding import EmbeddedItem, EmbeddedItemKind, EmbeddingTable
 from rkgk.domain.models.graph import (
     Concept,
     ConceptEdge,
@@ -76,6 +78,13 @@ from rkgk.domain.repositories.concept_normalization import (
     ConceptNormalizationRepository,
     ConceptNormalizationRepositoryError,
 )
+from rkgk.domain.repositories.index import (
+    IndexArtifactInvalidError,
+    IndexArtifactUnreadableError,
+    IndexNotFoundError,
+    IndexRepository,
+    IndexRepositoryError,
+)
 from rkgk.domain.repositories.paper import (
     PaperArtifactInvalidError,
     PaperArtifactUnreadableError,
@@ -92,6 +101,7 @@ from rkgk.domain.repositories.paper_extraction import (
 )
 from rkgk.domain.services.chunking import DEFAULT_MAX_TOKENS, chunk_paper
 from rkgk.domain.services.concept_normalization import check_normalization_against_extractions
+from rkgk.domain.services.embedding_items import build_embedding_items, concept_embedding_text
 from rkgk.domain.services.evidence_resolver import find_chunk, resolve_extraction_evidence
 from rkgk.domain.services.paper_extraction import check_extraction_against_paper, normalize_whitespace
 from rkgk.domain.services.validation import format_error_path
@@ -100,6 +110,7 @@ from rkgk.domain.tokenizers import Tokenizer
 DOMAIN_MODEL_VERSION = 1
 
 __all__ = [
+    "CHUNK_ID_PATTERN",
     "CONCEPT_NORMALIZATION_SCHEMA_VERSION",
     "DEFAULT_MAX_TOKENS",
     "DOMAIN_MODEL_VERSION",
@@ -123,6 +134,11 @@ __all__ = [
     "ConceptRelationType",
     "ConceptType",
     "ConceptTypeSpec",
+    "EmbeddedItem",
+    "EmbeddedItemKind",
+    "Embedder",
+    "EmbedderError",
+    "EmbeddingTable",
     "Entity",
     "Evidence",
     "EvidenceResolutionError",
@@ -131,6 +147,11 @@ __all__ = [
     "ExtractedEvidence",
     "ExtractedPaperConceptEdge",
     "GeneralKnowledgeEdge",
+    "IndexArtifactInvalidError",
+    "IndexArtifactUnreadableError",
+    "IndexNotFoundError",
+    "IndexRepository",
+    "IndexRepositoryError",
     "LocalConceptId",
     "LocalConceptRef",
     "MarkerKind",
@@ -168,12 +189,14 @@ __all__ = [
     "UnresolvedEvidence",
     "build_concept_normalization_prompt",
     "build_concept_normalization_schema",
+    "build_embedding_items",
     "build_paper_dir_name",
     "build_paper_extraction_prompt",
     "build_paper_extraction_schema",
     "check_extraction_against_paper",
     "check_normalization_against_extractions",
     "chunk_paper",
+    "concept_embedding_text",
     "describe_vocabulary",
     "find_chunk",
     "format_error_path",

@@ -4,12 +4,18 @@ version = "0.1.0"
 description = "Research Knowledge Graph Kit"
 requires-python = ">=3.13"
 dependencies = [
-    "pydantic>=2.13.5",
+    "numpy==2.5.3",
+    "pydantic==2.13.5",
 ]
 
 [project.scripts]
 extract = "rkgk.cli.extract:main"
 normalize = "rkgk.cli.normalize:main"
+
+[project.optional-dependencies]
+embedding = [
+    "sentence-transformers==6.0.1",
+]
 
 [build-system]
 requires = ["hatchling"]
@@ -20,9 +26,9 @@ packages = ["src/rkgk"]
 
 [dependency-groups]
 dev = [
-    "pytest",
-    "ruff",
-    "ty>=0.0.80",
+    "pytest==9.1.1",
+    "ruff==0.16.7",
+    "ty==0.0.80",
 ]
 
 [tool.ruff]

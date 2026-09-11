@@ -6,9 +6,12 @@ from pydantic import Field, field_validator, model_validator
 
 from rkgk.domain.models.base import Entity
 
+# The paper id, a colon, and the index of the chunk within the paper, both without leading zeros.
+CHUNK_ID_PATTERN = r"^[1-9][0-9]*:(0|[1-9][0-9]*)$"
+
 
 class Chunk(Entity):
-    id: str
+    id: str = Field(pattern=CHUNK_ID_PATTERN)
     paper_id: int = Field(ge=1)
     idx: int = Field(ge=0)
     page_start: int = Field(ge=1)
