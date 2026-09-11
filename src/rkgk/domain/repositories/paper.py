@@ -7,7 +7,14 @@ from rkgk.domain.repositories.base import RepositoryError
 
 
 class PaperRepositoryError(RepositoryError):
-    """Base of every failure the paper repository reports."""
+    """Base of every failure the paper repository reports.
+
+    `paper_id` is an attribute so a caller can render which paper failed without parsing the message.
+    """
+
+    def __init__(self, message: str, *, location: str | None = None, paper_id: int | None = None) -> None:
+        super().__init__(message, location=location)
+        self.paper_id = paper_id
 
 
 class PaperNotFoundError(PaperRepositoryError):
