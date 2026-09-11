@@ -1,10 +1,8 @@
 import json
-from pathlib import Path
 
 import pytest
 from pydantic import ValidationError
 
-from rkgk.domain.models.paper import Page, Paper, PaperMeta, PaperPreprocessInfo, parse_page
 from rkgk.domain.models.paper_extraction import (
     EXTRACTION_SCHEMA_VERSION,
     LOCAL_CONCEPT_ID_PATTERN,
@@ -13,34 +11,9 @@ from rkgk.domain.models.paper_extraction import (
     ExtractedEvidence,
     ExtractedPaperConceptEdge,
     PaperExtraction,
-    PaperExtractionIssue,
-    build_paper_extraction_prompt,
     build_paper_extraction_schema,
-    check_extraction_against_paper,
-    normalize_whitespace,
 )
-from rkgk.domain.models.vocabulary import (
-    ConceptRelationType,
-    ConceptType,
-    PaperConceptRelation,
-    describe_vocabulary,
-)
-
-PAPER = Paper(
-    meta=PaperMeta(
-        id=1,
-        title="Retrieval-Augmented Generation for Conference Paper Search",
-        authors=("Ada Lovelace",),
-        year=2026,
-        venue="NeurIPS",
-        page_count=2,
-        preprocess=PaperPreprocessInfo(tool="pymupdf", version="1.24.0", processed_at="2026-01-01T00:00:00Z"),
-    ),
-    pages=(
-        Page(number=1, text="We study how a retrieval-augmented\ngeneration pipeline helps a reader.\n"),
-        Page(number=2, text="The pipeline splits every paper into page-aligned chunks.\n"),
-    ),
-)
+from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType, PaperConceptRelation
 
 CONCEPTS = (
     ExtractedConcept(local_id="c1", name="Retrieval-Augmented Generation", type=ConceptType.METHOD),
@@ -64,10 +37,6 @@ def build_result(**overrides: object) -> PaperExtraction:
     }
     payload.update(overrides)
     return PaperExtraction.model_validate(payload)
-
-
-def test_a_result_that_matches_the_paper_is_accepted() -> None:
-    assert check_extraction_against_paper(build_result(), PAPER) == ()
 
 
 def test_a_result_declares_the_current_schema_version() -> None:
@@ -159,82 +128,6 @@ def test_a_result_without_concepts_is_rejected() -> None:
         build_result(concepts=())
 
 
-def test_a_paper_id_that_differs_from_the_paper_is_reported() -> None:
-    issues = check_extraction_against_paper(build_result(paper_id=2), PAPER)
-    assert [(issue.path, "2" in issue.message) for issue in issues] == [("paper_id", True)]
-
-
-def test_a_page_beyond_the_paper_is_reported_with_its_path() -> None:
-    edge = ExtractedPaperConceptEdge(
-        concept_id="c1", relation=PaperConceptRelation.USES, evidence=evidence(page=3, quote="pipeline")
-    )
-    issues = check_extraction_against_paper(build_result(paper_concepts=(edge,)), PAPER)
-    assert [issue.path for issue in issues] == ["paper_concepts[0].evidence[0].page"]
-    assert "outside 1..2" in issues[0].message
-
-
-def test_a_quote_that_is_not_on_the_page_is_reported_with_its_path() -> None:
-    edge = ExtractedPaperConceptEdge(
-        concept_id="c1", relation=PaperConceptRelation.USES, evidence=evidence(page=2, quote="dense retrieval")
-    )
-    issues = check_extraction_against_paper(build_result(paper_concepts=(edge,)), PAPER)
-    assert [issue.path for issue in issues] == ["paper_concepts[0].evidence[0].quote"]
-    assert "page 2" in issues[0].message
-
-
-def test_a_quote_from_another_page_of_the_same_paper_is_reported() -> None:
-    edge = ExtractedPaperConceptEdge(
-        concept_id="c1", relation=PaperConceptRelation.USES, evidence=evidence(page=2, quote="retrieval-augmented")
-    )
-    issues = check_extraction_against_paper(build_result(paper_concepts=(edge,)), PAPER)
-    assert [issue.path for issue in issues] == ["paper_concepts[0].evidence[0].quote"]
-
-
-def test_a_quote_spanning_a_line_break_matches_after_whitespace_normalization() -> None:
-    edge = ExtractedPaperConceptEdge(
-        concept_id="c1",
-        relation=PaperConceptRelation.USES,
-        evidence=evidence(page=1, quote="  retrieval-augmented generation   pipeline  "),
-    )
-    assert check_extraction_against_paper(build_result(paper_concepts=(edge,)), PAPER) == ()
-
-
-def test_a_quote_in_a_concept_relation_is_checked_with_its_own_path() -> None:
-    edge = ExtractedConceptEdge(
-        source_id="c1",
-        target_id="c2",
-        relation=ConceptRelationType.USED_FOR,
-        evidence=evidence(page=1, quote="not in the paper"),
-    )
-    issues = check_extraction_against_paper(build_result(concept_relations=(edge,)), PAPER)
-    assert [issue.path for issue in issues] == ["concept_relations[0].evidence[0].quote"]
-
-
-def test_every_issue_is_reported_instead_of_only_the_first() -> None:
-    edge = ExtractedPaperConceptEdge(
-        concept_id="c1",
-        relation=PaperConceptRelation.USES,
-        evidence=(
-            ExtractedEvidence(page=9, quote="pipeline"),
-            ExtractedEvidence(page=1, quote="dense retrieval"),
-        ),
-    )
-    issues = check_extraction_against_paper(build_result(paper_id=2, paper_concepts=(edge,)), PAPER)
-    assert [issue.path for issue in issues] == [
-        "paper_id",
-        "paper_concepts[0].evidence[0].page",
-        "paper_concepts[0].evidence[1].quote",
-    ]
-
-
-@pytest.mark.parametrize(
-    ("text", "expected"),
-    [("a  b", "a b"), (" a\nb ", "a b"), ("a\t\tb", "a b"), ("", ""), ("\n", "")],
-)
-def test_normalize_whitespace_collapses_runs_and_strips(text: str, expected: str) -> None:
-    assert normalize_whitespace(text) == expected
-
-
 def test_the_schema_describes_the_summary_and_the_local_id_pattern() -> None:
     schema = build_paper_extraction_schema()
     properties = schema["properties"]
@@ -245,59 +138,3 @@ def test_the_schema_describes_the_summary_and_the_local_id_pattern() -> None:
 
 def test_the_schema_is_json_serializable() -> None:
     assert json.loads(json.dumps(build_paper_extraction_schema())) == build_paper_extraction_schema()
-
-
-FIXTURE_DIR = Path(__file__).parent.parent.parent / "fixtures"
-PROMPT_SNAPSHOT_PATH = Path(__file__).parent / "snapshots" / "paper_extraction_prompt.md"
-
-
-def load_fixture_paper() -> Paper:
-    paper_dir = FIXTURE_DIR / "papers" / "0001"
-    meta = PaperMeta.model_validate(json.loads((paper_dir / "paper.json").read_text(encoding="utf-8")))
-    pages = tuple(
-        parse_page(number, (paper_dir / "pages" / f"{number:03d}.md").read_text(encoding="utf-8"))
-        for number in range(1, meta.page_count + 1)
-    )
-    return Paper(meta=meta, pages=pages)
-
-
-def test_the_prompt_for_the_fixture_paper_matches_the_snapshot() -> None:
-    assert build_paper_extraction_prompt(load_fixture_paper()) == PROMPT_SNAPSHOT_PATH.read_text(encoding="utf-8")
-
-
-def test_the_prompt_is_deterministic() -> None:
-    paper = load_fixture_paper()
-    assert build_paper_extraction_prompt(paper) == build_paper_extraction_prompt(paper)
-
-
-def test_the_prompt_carries_the_vocabulary_and_the_paper_id() -> None:
-    prompt = build_paper_extraction_prompt(load_fixture_paper())
-    assert describe_vocabulary().rstrip("\n") in prompt
-    assert "Set `paper_id` to 1." in prompt
-    assert f"Set `schema_version` to {EXTRACTION_SCHEMA_VERSION}." in prompt
-
-
-def test_the_prompt_holds_every_page_with_its_number_and_text() -> None:
-    prompt = build_paper_extraction_prompt(load_fixture_paper())
-    assert prompt.count("## Page ") == 3
-    assert "## Page 2\n\n## Method" in prompt
-    assert "<!-- equation: 1 -->" in prompt
-
-
-def test_the_prompt_ends_by_asking_for_the_json_alone() -> None:
-    assert build_paper_extraction_prompt(load_fixture_paper()).endswith("Return only the JSON object.\n")
-
-
-def test_a_first_attempt_mentions_neither_a_previous_answer_nor_issues() -> None:
-    prompt = build_paper_extraction_prompt(load_fixture_paper())
-    assert "Previous attempt" not in prompt
-    assert "## Issues" not in prompt
-
-
-def test_a_retry_repeats_the_rejected_json_and_the_issues() -> None:
-    previous = {"paper_id": 1, "summary_ja": "要約"}
-    issues = (PaperExtractionIssue(path="paper_concepts[0].evidence[0].quote", message="is not found on page 1"),)
-    prompt = build_paper_extraction_prompt(load_fixture_paper(), previous, issues)
-    assert '"summary_ja": "要約"' in prompt
-    assert "- paper_concepts[0].evidence[0].quote: is not found on page 1" in prompt
-    assert "Return a complete corrected JSON object that fixes every issue above." in prompt

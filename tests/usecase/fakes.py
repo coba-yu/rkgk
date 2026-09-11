@@ -2,8 +2,10 @@
 
 from datetime import UTC, datetime
 
+from rkgk.domain.models.concept_normalization import ConceptNormalization
 from rkgk.domain.models.paper import Page, Paper, PaperIndexEntry, PaperMeta, PaperPreprocessInfo
 from rkgk.domain.models.paper_extraction import PaperExtraction
+from rkgk.domain.repositories.concept_normalization import ConceptNormalizationNotFoundError
 from rkgk.domain.repositories.paper import PaperNotFoundError
 from rkgk.domain.repositories.paper_extraction import PaperExtractionNotFoundError
 
@@ -40,14 +42,30 @@ class FakePaperRepository:
 
 
 class FakePaperExtractionRepository:
-    def __init__(self) -> None:
+    """Holds the extractions a test starts with, and records every extraction the use case saves."""
+
+    def __init__(self, *extractions: PaperExtraction) -> None:
         self.saved: list[PaperExtraction] = []
+        self._stored = {extraction.paper_id: extraction for extraction in extractions}
 
     def save(self, result: PaperExtraction) -> None:
         self.saved.append(result)
+        self._stored[result.paper_id] = result
 
     def find(self, paper_id: int) -> PaperExtraction:
-        for result in reversed(self.saved):
-            if result.paper_id == paper_id:
-                return result
-        raise PaperExtractionNotFoundError(f"paper {paper_id}: extraction not found", paper_id=paper_id)
+        if paper_id not in self._stored:
+            raise PaperExtractionNotFoundError(f"paper {paper_id}: extraction not found", paper_id=paper_id)
+        return self._stored[paper_id]
+
+
+class FakeConceptNormalizationRepository:
+    def __init__(self) -> None:
+        self.saved: list[ConceptNormalization] = []
+
+    def save(self, normalization: ConceptNormalization) -> None:
+        self.saved.append(normalization)
+
+    def find(self) -> ConceptNormalization:
+        if not self.saved:
+            raise ConceptNormalizationNotFoundError("normalization not found")
+        return self.saved[-1]

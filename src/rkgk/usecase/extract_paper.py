@@ -5,9 +5,9 @@ from rkgk.domain.models.paper_extraction import (
     PaperExtractionIssue,
     PaperExtractionRun,
     PaperExtractionValidationError,
-    build_paper_extraction_prompt,
     build_paper_extraction_schema,
 )
+from rkgk.domain.prompts.paper_extraction.builder import build_paper_extraction_prompt
 from rkgk.domain.repositories.paper import PaperRepository
 from rkgk.domain.repositories.paper_extraction import PaperExtractionRepository
 from rkgk.usecase.validate_paper_extraction import ValidatePaperExtractionUseCase

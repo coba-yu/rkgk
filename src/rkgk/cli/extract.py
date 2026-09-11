@@ -7,10 +7,10 @@ the code and read the details from the same output without parsing prose.
 """
 
 import argparse
-import json
 from importlib.metadata import version
 from pathlib import Path
 
+from rkgk.cli._shared import EXIT_ERROR, EXIT_INVALID, EXIT_OK, print_json
 from rkgk.domain.agents import StructuredOutputAgentError
 from rkgk.domain.models.paper_extraction import PaperExtraction, PaperExtractionIssue, PaperExtractionValidationError
 from rkgk.domain.repositories.paper import PaperRepositoryError
@@ -20,19 +20,11 @@ from rkgk.infrastructure.file_paper_extraction_repository import FilePaperExtrac
 from rkgk.infrastructure.file_paper_repository import FilePaperRepository
 from rkgk.usecase.extract_paper import ExtractPaperUseCase
 
-EXIT_OK = 0
-EXIT_INVALID = 1
-EXIT_ERROR = 2
-
 NAME = "extract"
 HELP = "extract one paper with Claude and write the result next to it"
 
 DEFAULT_DATA_DIR = Path("data")
 DEFAULT_MAX_ATTEMPTS = 3
-
-
-def print_json(payload: dict[str, object]) -> None:
-    print(json.dumps(payload, ensure_ascii=False))
 
 
 def _run(args: argparse.Namespace) -> int:
