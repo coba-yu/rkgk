@@ -5,6 +5,7 @@ thing: a chunk hit points at a page of a paper, a summary hit at a paper, and a 
 graph that leads to several papers.
 """
 
+import re
 from enum import StrEnum
 from typing import Self
 
@@ -12,6 +13,7 @@ import numpy as np
 from pydantic import ConfigDict, Field, field_validator, model_validator
 
 from rkgk.domain.models.base import Entity
+from rkgk.domain.models.chunk import CHUNK_ID_PATTERN
 
 
 class EmbeddedItemKind(StrEnum):
@@ -54,6 +56,12 @@ class EmbeddedItem(Entity):
             case EmbeddedItemKind.CHUNK:
                 if self.paper_id is None:
                     raise ValueError("paper_id is required when kind is chunk")
+                # The whole id is checked, not just the paper prefix, so that an item read from a hand-edited
+                # artifact can always be resolved to a chunk the build wrote.
+                if re.fullmatch(CHUNK_ID_PATTERN, self.ref) is None:
+                    raise ValueError(
+                        f"ref must be a chunk id of the form paper_id:idx when kind is chunk, got {self.ref!r}"
+                    )
                 if not self.ref.startswith(f"{self.paper_id}:"):
                     raise ValueError(f"ref must be a chunk id of paper {self.paper_id}")
         return self

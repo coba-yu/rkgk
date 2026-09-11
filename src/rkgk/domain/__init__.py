@@ -7,7 +7,7 @@ so an index built with an older model can be detected and rebuilt.
 from rkgk.domain.agents import StructuredOutputAgent, StructuredOutputAgentError
 from rkgk.domain.embedders import Embedder, EmbedderError
 from rkgk.domain.models.base import SLUG_PATTERN, Entity, Slug
-from rkgk.domain.models.chunk import Chunk
+from rkgk.domain.models.chunk import CHUNK_ID_PATTERN, Chunk
 from rkgk.domain.models.concept_normalization import (
     CONCEPT_NORMALIZATION_SCHEMA_VERSION,
     ConceptNormalization,
@@ -110,6 +110,7 @@ from rkgk.domain.tokenizers import Tokenizer
 DOMAIN_MODEL_VERSION = 1
 
 __all__ = [
+    "CHUNK_ID_PATTERN",
     "CONCEPT_NORMALIZATION_SCHEMA_VERSION",
     "DEFAULT_MAX_TOKENS",
     "DOMAIN_MODEL_VERSION",

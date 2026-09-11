@@ -19,6 +19,17 @@ def test_a_chunk_item_must_reference_a_chunk_of_its_own_paper() -> None:
         EmbeddedItem(kind=EmbeddedItemKind.CHUNK, ref="1:0", paper_id=2, text="We study retrieval.")
 
 
+@pytest.mark.parametrize("ref", ["1:bogus", "1:", "1", "1:0:0", "01:0", "1:00", " 1:0"])
+def test_a_chunk_item_must_reference_a_well_formed_chunk_id(ref: str) -> None:
+    with pytest.raises(ValidationError, match="ref must be a chunk id of the form paper_id:idx"):
+        EmbeddedItem(kind=EmbeddedItemKind.CHUNK, ref=ref, paper_id=1, text="We study retrieval.")
+
+
+def test_a_chunk_item_must_not_be_fooled_by_a_paper_id_that_is_only_a_prefix() -> None:
+    with pytest.raises(ValidationError, match="ref must be a chunk id of paper 1"):
+        EmbeddedItem(kind=EmbeddedItemKind.CHUNK, ref="12:0", paper_id=1, text="We study retrieval.")
+
+
 def test_a_summary_item_needs_the_paper_it_belongs_to() -> None:
     with pytest.raises(ValidationError, match="paper_id is required when kind is summary"):
         EmbeddedItem(kind=EmbeddedItemKind.SUMMARY, ref="1", text="検索を研究する。")
