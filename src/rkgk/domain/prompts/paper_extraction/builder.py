@@ -1,18 +1,17 @@
 """Builds the prompt that asks an agent to extract the knowledge graph of one paper.
 
-The static prose lives in the .md files next to this module and in ../shared, and the retry wording in
-../retry.py; this module only assembles the sections and loops over the paper's pages.
+The prose that is only this prompt's lives in the .md files next to this module, and the sections both
+prompts share in ../vocabulary.py and ../retry.py; this module assembles them and loops over the paper's pages.
 """
 
 from pathlib import Path
 
 from rkgk.domain.models.paper import Paper
 from rkgk.domain.models.paper_extraction import PaperExtractionIssue
-from rkgk.domain.models.vocabulary import describe_vocabulary
 from rkgk.domain.prompts.retry import build_retry_section
+from rkgk.domain.prompts.vocabulary import build_vocabulary_section
 
 _DIR = Path(__file__).parent
-_SHARED_DIR = _DIR.parent / "shared"
 
 
 def _read(path: Path) -> str:
@@ -30,9 +29,7 @@ def build_paper_extraction_prompt(
     lines = [
         _read(_DIR / "task.md"),
         "",
-        _read(_SHARED_DIR / "vocabulary.md"),
-        "",
-        describe_vocabulary().rstrip("\n"),
+        *build_vocabulary_section(),
         "",
         _read(_DIR / "rules.md"),
         "",
