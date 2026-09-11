@@ -59,11 +59,11 @@ from rkgk.domain.repositories.paper import (
     PaperRepositoryError,
 )
 from rkgk.domain.repositories.paper_extraction import (
-    ExtractionArtifactInvalidError,
-    ExtractionArtifactUnreadableError,
-    ExtractionNotFoundError,
-    ExtractionRepositoryError,
+    PaperExtractionArtifactInvalidError,
+    PaperExtractionArtifactUnreadableError,
+    PaperExtractionNotFoundError,
     PaperExtractionRepository,
+    PaperExtractionRepositoryError,
 )
 
 DOMAIN_MODEL_VERSION = 1
@@ -87,10 +87,6 @@ __all__ = [
     "ExtractedConceptEdge",
     "ExtractedEvidence",
     "ExtractedPaperConceptEdge",
-    "ExtractionArtifactInvalidError",
-    "ExtractionArtifactUnreadableError",
-    "ExtractionNotFoundError",
-    "ExtractionRepositoryError",
     "LocalConceptId",
     "MarkerKind",
     "Origin",
@@ -103,8 +99,12 @@ __all__ = [
     "PaperConceptEdge",
     "PaperConceptRelation",
     "PaperExtraction",
+    "PaperExtractionArtifactInvalidError",
+    "PaperExtractionArtifactUnreadableError",
     "PaperExtractionIssue",
+    "PaperExtractionNotFoundError",
     "PaperExtractionRepository",
+    "PaperExtractionRepositoryError",
     "PaperExtractionRun",
     "PaperExtractionValidationError",
     "PaperIndexEntry",

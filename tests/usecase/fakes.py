@@ -5,7 +5,7 @@ from datetime import UTC, datetime
 from rkgk.domain.models.paper import Page, Paper, PaperIndexEntry, PaperMeta, PaperPreprocessInfo
 from rkgk.domain.models.paper_extraction import PaperExtraction
 from rkgk.domain.repositories.paper import PaperNotFoundError
-from rkgk.domain.repositories.paper_extraction import ExtractionNotFoundError
+from rkgk.domain.repositories.paper_extraction import PaperExtractionNotFoundError
 
 PREPROCESS = PaperPreprocessInfo(tool="pymupdf", version="1.24.0", processed_at=datetime(2026, 1, 1, tzinfo=UTC))
 
@@ -50,4 +50,4 @@ class FakePaperExtractionRepository:
         for result in reversed(self.saved):
             if result.paper_id == paper_id:
                 return result
-        raise ExtractionNotFoundError(f"paper {paper_id}: extraction not found", paper_id=paper_id)
+        raise PaperExtractionNotFoundError(f"paper {paper_id}: extraction not found", paper_id=paper_id)

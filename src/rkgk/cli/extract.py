@@ -18,7 +18,7 @@ from rkgk.domain.models.paper_extraction import (
     build_paper_extraction_schema,
 )
 from rkgk.domain.repositories.paper import PaperRepositoryError
-from rkgk.domain.repositories.paper_extraction import ExtractionRepositoryError
+from rkgk.domain.repositories.paper_extraction import PaperExtractionRepositoryError
 from rkgk.infrastructure.claude_extractor import ClaudeExtractor
 from rkgk.infrastructure.file_extraction_repository import FileExtractionRepository
 from rkgk.infrastructure.file_paper_repository import FilePaperRepository
@@ -80,7 +80,7 @@ def _run_run(args: argparse.Namespace) -> int:
             }
         )
         return EXIT_INVALID
-    except (StructuredOutputAgentError, PaperRepositoryError, ExtractionRepositoryError) as error:
+    except (StructuredOutputAgentError, PaperRepositoryError, PaperExtractionRepositoryError) as error:
         print_json({"status": "error", "message": str(error)})
         return EXIT_ERROR
     payload: dict[str, object] = {
@@ -117,7 +117,7 @@ def _run(args: argparse.Namespace, execute: Callable[[int, object], PaperExtract
         UnicodeDecodeError,
         json.JSONDecodeError,
         PaperRepositoryError,
-        ExtractionRepositoryError,
+        PaperExtractionRepositoryError,
     ) as error:
         print_json({"status": "error", "message": str(error)})
         return EXIT_ERROR

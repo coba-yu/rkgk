@@ -11,9 +11,9 @@ from rkgk.domain.models.paper_extraction import (
 )
 from rkgk.domain.models.vocabulary import ConceptType, PaperConceptRelation
 from rkgk.domain.repositories.paper_extraction import (
-    ExtractionArtifactInvalidError,
-    ExtractionNotFoundError,
-    ExtractionRepositoryError,
+    PaperExtractionArtifactInvalidError,
+    PaperExtractionNotFoundError,
+    PaperExtractionRepositoryError,
 )
 from rkgk.infrastructure.file_extraction_repository import FileExtractionRepository
 
@@ -61,7 +61,7 @@ def test_saving_twice_replaces_the_previous_extraction(tmp_path: Path) -> None:
 
 
 def test_a_paper_without_an_extraction_is_reported_with_its_id(tmp_path: Path) -> None:
-    with pytest.raises(ExtractionNotFoundError, match="paper 2") as caught:
+    with pytest.raises(PaperExtractionNotFoundError, match="paper 2") as caught:
         FileExtractionRepository(tmp_path).find(2)
     assert caught.value.paper_id == 2
 
@@ -69,25 +69,25 @@ def test_a_paper_without_an_extraction_is_reported_with_its_id(tmp_path: Path) -
 def test_a_corrupted_file_is_reported_as_invalid(tmp_path: Path) -> None:
     FileExtractionRepository(tmp_path).save(RESULT)
     (tmp_path / "papers" / "0001" / "extraction.json").write_text("{not json", encoding="utf-8")
-    with pytest.raises(ExtractionArtifactInvalidError, match="is not valid JSON"):
+    with pytest.raises(PaperExtractionArtifactInvalidError, match="is not valid JSON"):
         FileExtractionRepository(tmp_path).find(1)
 
 
 def test_a_file_that_is_not_an_extraction_is_reported_as_invalid(tmp_path: Path) -> None:
     FileExtractionRepository(tmp_path).save(RESULT)
     (tmp_path / "papers" / "0001" / "extraction.json").write_text('{"paper_id": 1}', encoding="utf-8")
-    with pytest.raises(ExtractionArtifactInvalidError, match="is not a valid PaperExtraction"):
+    with pytest.raises(PaperExtractionArtifactInvalidError, match="is not a valid PaperExtraction"):
         FileExtractionRepository(tmp_path).find(1)
 
 
 def test_a_non_utf8_file_is_reported_as_invalid(tmp_path: Path) -> None:
     FileExtractionRepository(tmp_path).save(RESULT)
     (tmp_path / "papers" / "0001" / "extraction.json").write_bytes(b"\xff\xfe")
-    with pytest.raises(ExtractionArtifactInvalidError, match="is not valid UTF-8"):
+    with pytest.raises(PaperExtractionArtifactInvalidError, match="is not valid UTF-8"):
         FileExtractionRepository(tmp_path).find(1)
 
 
 def test_errors_carry_the_location_as_an_attribute(tmp_path: Path) -> None:
-    with pytest.raises(ExtractionRepositoryError) as caught:
+    with pytest.raises(PaperExtractionRepositoryError) as caught:
         FileExtractionRepository(tmp_path).find(1)
     assert caught.value.location == str(tmp_path / "papers" / "0001" / "extraction.json")
