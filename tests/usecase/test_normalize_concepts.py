@@ -108,7 +108,7 @@ def test_an_answer_that_passes_validation_is_saved_after_one_attempt() -> None:
 def test_the_prompt_holds_the_concepts_of_every_extracted_paper() -> None:
     agent = FakeAgent(VALID_PAYLOAD)
     build_use_case(agent, FakeConceptNormalizationRepository()).execute()
-    assert "## Paper 1" in agent.prompts[0]
+    assert '<paper id="1">' in agent.prompts[0]
     assert "- c1 | Knowledge Graph | method" in agent.prompts[0]
 
 

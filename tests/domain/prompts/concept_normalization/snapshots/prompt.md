@@ -50,14 +50,14 @@
 論文ごとに個別に抽出したので、`c1`、`c2`、... はそれが記載されている論文の中でのみ通用する。
 概念の行は `- local id | name | type | aliases: ... | description` という形式で、論文が aliases や description を報告していない場合は途中で終わる。
 
-## Paper 1
-
+<paper id="1">
 - c1 | Retrieval-Augmented Generation | method | aliases: RAG, 検索拡張生成 | Generation grounded in retrieved passages.
 - c2 | Page-Aligned Chunking | method
+</paper>
 
-## Paper 2
-
+<paper id="2">
 - c1 | RAG | method
 - c2 | Knowledge Graph | method | aliases: KG | A graph of concepts and their relations.
+</paper>
 
 JSON オブジェクトだけを返す。

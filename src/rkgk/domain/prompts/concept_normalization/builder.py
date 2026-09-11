@@ -52,8 +52,10 @@ def build_concept_normalization_prompt(
         "",
         _read(_DIR / "papers.md"),
     ]
+    # Tagged like the pages of the extraction prompt, so a paper's concepts are bounded rather than running
+    # until the next heading.
     for extraction in extractions:
-        lines += ["", f"## Paper {extraction.paper_id}", "", *_describe_concepts(extraction)]
+        lines += ["", f'<paper id="{extraction.paper_id}">', *_describe_concepts(extraction), "</paper>"]
     if previous is not None:
         lines += [
             "",

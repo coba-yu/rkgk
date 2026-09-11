@@ -58,8 +58,8 @@ def test_the_prompt_carries_the_vocabulary() -> None:
 
 def test_the_prompt_lists_every_paper_with_its_concepts_aliases_and_description() -> None:
     prompt = build_concept_normalization_prompt(EXTRACTIONS)
-    assert "## Paper 1" in prompt
-    assert "## Paper 2" in prompt
+    assert '<paper id="1">' in prompt
+    assert '<paper id="2">' in prompt
     assert (
         "- c1 | Retrieval-Augmented Generation | method | aliases: RAG, 検索拡張生成 | "
         "Generation grounded in retrieved passages." in prompt
