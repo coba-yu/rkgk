@@ -23,7 +23,7 @@ from rkgk.infrastructure.claude_code_agent import ClaudeCodeAgent
 from rkgk.infrastructure.file_paper_extraction_repository import FilePaperExtractionRepository
 from rkgk.infrastructure.file_paper_repository import FilePaperRepository
 from rkgk.usecase.extract_paper import ExtractPaperUseCase
-from rkgk.usecase.save_extraction import SaveExtractionUseCase
+from rkgk.usecase.save_paper_extraction import SavePaperExtractionUseCase
 from rkgk.usecase.validate_paper_extraction import ValidatePaperExtractionUseCase
 
 NAME = "extract"
@@ -101,7 +101,7 @@ def _run_validate(args: argparse.Namespace) -> int:
 
 def _run_save(args: argparse.Namespace) -> int:
     extraction_repository = FilePaperExtractionRepository(args.data_dir)
-    use_case = SaveExtractionUseCase(FilePaperRepository(args.data_dir), extraction_repository)
+    use_case = SavePaperExtractionUseCase(FilePaperRepository(args.data_dir), extraction_repository)
     return _run(args, use_case.execute, {"path": str(extraction_repository.path_for(args.paper_id))})
 
 

@@ -2,13 +2,13 @@ import pytest
 
 from rkgk.domain.models.paper_extraction import PaperExtractionValidationError
 from rkgk.domain.repositories.paper import PaperNotFoundError
-from rkgk.usecase.save_extraction import SaveExtractionUseCase
+from rkgk.usecase.save_paper_extraction import SavePaperExtractionUseCase
 from tests.usecase.fakes import FakePaperExtractionRepository, FakePaperRepository
 from tests.usecase.test_validate_paper_extraction import PAPER, build_payload
 
 
-def build_use_case(extraction_repository: FakePaperExtractionRepository) -> SaveExtractionUseCase:
-    return SaveExtractionUseCase(FakePaperRepository({1: PAPER}), extraction_repository)
+def build_use_case(extraction_repository: FakePaperExtractionRepository) -> SavePaperExtractionUseCase:
+    return SavePaperExtractionUseCase(FakePaperRepository({1: PAPER}), extraction_repository)
 
 
 def test_a_valid_payload_is_stored_and_returned() -> None:
@@ -28,7 +28,7 @@ def test_an_invalid_payload_is_not_stored() -> None:
 
 def test_a_payload_for_a_paper_that_does_not_exist_is_not_stored() -> None:
     extraction_repository = FakePaperExtractionRepository()
-    use_case = SaveExtractionUseCase(FakePaperRepository({}), extraction_repository)
+    use_case = SavePaperExtractionUseCase(FakePaperRepository({}), extraction_repository)
     with pytest.raises(PaperNotFoundError, match="paper 1"):
         use_case.execute(1, build_payload())
     assert extraction_repository.saved == []

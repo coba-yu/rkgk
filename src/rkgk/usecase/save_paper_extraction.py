@@ -6,7 +6,7 @@ from rkgk.domain.repositories.paper_extraction import PaperExtractionRepository
 from rkgk.usecase.validate_paper_extraction import ValidatePaperExtractionUseCase
 
 
-class SaveExtractionUseCase:
+class SavePaperExtractionUseCase:
     def __init__(self, paper_repository: PaperRepository, extraction_repository: PaperExtractionRepository) -> None:
         self._validate = ValidatePaperExtractionUseCase(paper_repository)
         self._extraction_repository = extraction_repository
