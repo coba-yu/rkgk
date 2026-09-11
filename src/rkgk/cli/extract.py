@@ -1,41 +1,31 @@
 """The `extract` command, installed as the console script of the same name.
 
-`main` builds the parser and dispatches to an action: `run` drives
-the whole extraction with Claude and stores the result, while `schema`, `validate` and `save` expose the single
-steps for a payload that was produced by hand or by another tool.
-
-A command prints one JSON object on stdout and reports the outcome as an exit code, so an agent can branch on the
-code and read the details from the same output without parsing prose.
+`main` extracts one paper with Claude, validates the result against the paper text, retries on failure, and
+saves the accepted extraction next to the paper.
+The command prints one JSON object on stdout and reports the outcome as an exit code, so an agent can branch on
+the code and read the details from the same output without parsing prose.
 """
 
 import argparse
 import json
-from collections.abc import Callable
 from importlib.metadata import version
 from pathlib import Path
 
 from rkgk.domain.agents import StructuredOutputAgentError
-from rkgk.domain.models.paper_extraction import (
-    PaperExtraction,
-    PaperExtractionIssue,
-    PaperExtractionValidationError,
-    build_paper_extraction_schema,
-)
+from rkgk.domain.models.paper_extraction import PaperExtraction, PaperExtractionIssue, PaperExtractionValidationError
 from rkgk.domain.repositories.paper import PaperRepositoryError
 from rkgk.domain.repositories.paper_extraction import PaperExtractionRepositoryError
 from rkgk.infrastructure.claude_code_agent import ClaudeCodeAgent
 from rkgk.infrastructure.file_paper_extraction_repository import FilePaperExtractionRepository
 from rkgk.infrastructure.file_paper_repository import FilePaperRepository
 from rkgk.usecase.extract_paper import ExtractPaperUseCase
-from rkgk.usecase.save_paper_extraction import SavePaperExtractionUseCase
-from rkgk.usecase.validate_paper_extraction import ValidatePaperExtractionUseCase
 
 EXIT_OK = 0
 EXIT_INVALID = 1
 EXIT_ERROR = 2
 
 NAME = "extract"
-HELP = "describe, check, or store the extraction JSON an agent wrote for one paper"
+HELP = "extract one paper with Claude and write the result next to it"
 
 DEFAULT_DATA_DIR = Path("data")
 DEFAULT_MAX_ATTEMPTS = 3
@@ -45,34 +35,7 @@ def print_json(payload: dict[str, object]) -> None:
     print(json.dumps(payload, ensure_ascii=False))
 
 
-def _add_actions(parser: argparse.ArgumentParser) -> None:
-    actions = parser.add_subparsers(dest="action")
-    schema = actions.add_parser("schema", help="print the JSON Schema an extraction JSON must follow")
-    schema.set_defaults(func=_run_schema)
-    run = actions.add_parser("run", help="extract one paper with Claude and write the result next to it")
-    run.add_argument("paper_id", type=int)
-    run.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR)
-    run.add_argument("--model", default=None, help="model passed to the Claude CLI; its default is used when unset")
-    run.add_argument("--max-attempts", type=int, default=DEFAULT_MAX_ATTEMPTS)
-    run.set_defaults(func=_run_run)
-    # validate and save read the same two arguments, so they are declared together to keep them in step.
-    for name, help_text, handler in (
-        ("validate", "check an extraction JSON against the paper text", _run_validate),
-        ("save", "check an extraction JSON and write it next to the paper", _run_save),
-    ):
-        action = actions.add_parser(name, help=help_text)
-        action.add_argument("paper_id", type=int)
-        action.add_argument("json_path", type=Path)
-        action.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR)
-        action.set_defaults(func=handler)
-
-
-def _run_schema(_args: argparse.Namespace) -> int:
-    print(json.dumps(build_paper_extraction_schema(), indent=2, ensure_ascii=False))
-    return EXIT_OK
-
-
-def _run_run(args: argparse.Namespace) -> int:
+def _run(args: argparse.Namespace) -> int:
     extraction_repository = FilePaperExtractionRepository(args.data_dir)
     use_case = ExtractPaperUseCase(
         FilePaperRepository(args.data_dir),
@@ -105,39 +68,6 @@ def _run_run(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
-def _run_validate(args: argparse.Namespace) -> int:
-    use_case = ValidatePaperExtractionUseCase(FilePaperRepository(args.data_dir))
-    return _run_payload_action(args, use_case.execute, {})
-
-
-def _run_save(args: argparse.Namespace) -> int:
-    extraction_repository = FilePaperExtractionRepository(args.data_dir)
-    use_case = SavePaperExtractionUseCase(FilePaperRepository(args.data_dir), extraction_repository)
-    return _run_payload_action(args, use_case.execute, {"path": str(extraction_repository.path_for(args.paper_id))})
-
-
-def _run_payload_action(
-    args: argparse.Namespace, execute: Callable[[int, object], PaperExtraction], extra: dict[str, object]
-) -> int:
-    try:
-        payload = json.loads(args.json_path.read_text(encoding="utf-8"))
-        result = execute(args.paper_id, payload)
-    except PaperExtractionValidationError as error:
-        print_json({"status": "invalid", "issues": [_render_issue(issue) for issue in error.issues]})
-        return EXIT_INVALID
-    except (
-        OSError,
-        UnicodeDecodeError,
-        json.JSONDecodeError,
-        PaperRepositoryError,
-        PaperExtractionRepositoryError,
-    ) as error:
-        print_json({"status": "error", "message": str(error)})
-        return EXIT_ERROR
-    print_json({"status": "ok", **_render_result(result), **extra})
-    return EXIT_OK
-
-
 def _render_issue(issue: PaperExtractionIssue) -> dict[str, str]:
     return {"path": issue.path, "message": issue.message}
 
@@ -158,14 +88,14 @@ def _build_parser() -> argparse.ArgumentParser:
         action="version",
         version=f"%(prog)s {version('rkgk')}",
     )
-    _add_actions(parser)
+    parser.add_argument("paper_id", type=int)
+    parser.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR)
+    parser.add_argument("--model", default=None, help="model passed to the Claude CLI; its default is used when unset")
+    parser.add_argument("--max-attempts", type=int, default=DEFAULT_MAX_ATTEMPTS)
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
-    if not hasattr(args, "func"):
-        parser.print_help()
-        return EXIT_ERROR
-    return args.func(args)
+    return _run(args)

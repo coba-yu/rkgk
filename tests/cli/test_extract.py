@@ -44,12 +44,6 @@ VALID_EXTRACTION: dict[str, Any] = {
 }
 
 
-def write_extraction(tmp_path: Path, payload: object) -> Path:
-    path = tmp_path / "extraction.json"
-    path.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
-    return path
-
-
 def read_output(capsys: pytest.CaptureFixture[str]) -> dict[str, Any]:
     return json.loads(capsys.readouterr().out)
 
@@ -58,101 +52,6 @@ def copy_fixture(tmp_path: Path) -> Path:
     data_dir = tmp_path / "data"
     shutil.copytree(FIXTURE_DIR, data_dir)
     return data_dir
-
-
-def test_schema_prints_the_schema_of_an_extraction(capsys: pytest.CaptureFixture[str]) -> None:
-    assert main(["schema"]) == 0
-    schema = json.loads(capsys.readouterr().out)
-    assert "summary_ja" in schema["properties"]
-
-
-def test_schema_needs_no_data_directory(capsys: pytest.CaptureFixture[str]) -> None:
-    assert main(["schema"]) == 0
-    assert capsys.readouterr().out.startswith("{\n")
-
-
-def test_validate_accepts_an_extraction_backed_by_the_paper(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    path = write_extraction(tmp_path, VALID_EXTRACTION)
-    assert main(["validate", "1", str(path), "--data-dir", str(FIXTURE_DIR)]) == 0
-    assert read_output(capsys) == {
-        "status": "ok",
-        "paper_id": 1,
-        "concepts": 2,
-        "paper_concepts": 2,
-        "concept_relations": 1,
-    }
-
-
-def test_validate_reports_a_quote_that_is_not_in_the_paper(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    payload = copy.deepcopy(VALID_EXTRACTION)
-    payload["paper_concepts"][0]["evidence"][0]["quote"] = "a sentence the paper never wrote"
-    path = write_extraction(tmp_path, payload)
-    assert main(["validate", "1", str(path), "--data-dir", str(FIXTURE_DIR)]) == 1
-    output = read_output(capsys)
-    assert output["status"] == "invalid"
-    assert output["issues"] == [
-        {"path": "paper_concepts[0].evidence[0].quote", "message": "is not found in the text of page 1"}
-    ]
-
-
-def test_validate_reports_a_payload_that_does_not_fit_the_schema(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    payload = copy.deepcopy(VALID_EXTRACTION)
-    del payload["concepts"]
-    path = write_extraction(tmp_path, payload)
-    assert main(["validate", "1", str(path), "--data-dir", str(FIXTURE_DIR)]) == 1
-    output = read_output(capsys)
-    assert output["status"] == "invalid"
-    assert "concepts" in [issue["path"] for issue in output["issues"]]
-
-
-def test_validate_reports_an_unknown_paper_as_an_error(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    payload = copy.deepcopy(VALID_EXTRACTION)
-    payload["paper_id"] = 9
-    path = write_extraction(tmp_path, payload)
-    assert main(["validate", "9", str(path), "--data-dir", str(FIXTURE_DIR)]) == 2
-    output = read_output(capsys)
-    assert output["status"] == "error"
-    assert "paper 9" in output["message"]
-
-
-def test_validate_reports_a_file_that_is_not_json_as_an_error(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    path = tmp_path / "extraction.json"
-    path.write_text("{not json", encoding="utf-8")
-    assert main(["validate", "1", str(path), "--data-dir", str(FIXTURE_DIR)]) == 2
-    assert read_output(capsys)["status"] == "error"
-
-
-def test_validate_reports_a_missing_file_as_an_error(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    path = tmp_path / "absent.json"
-    assert main(["validate", "1", str(path), "--data-dir", str(FIXTURE_DIR)]) == 2
-    assert read_output(capsys)["status"] == "error"
-
-
-def test_save_writes_the_extraction_next_to_the_paper(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    data_dir = copy_fixture(tmp_path)
-    path = write_extraction(tmp_path, VALID_EXTRACTION)
-    assert main(["save", "1", str(path), "--data-dir", str(data_dir)]) == 0
-    written = data_dir / "papers" / "0001" / "extraction.json"
-    assert read_output(capsys)["path"] == str(written)
-    assert json.loads(written.read_text(encoding="utf-8"))["paper_id"] == 1
-
-
-def test_save_writes_nothing_when_the_extraction_is_invalid(
-    tmp_path: Path, capsys: pytest.CaptureFixture[str]
-) -> None:
-    data_dir = copy_fixture(tmp_path)
-    payload = copy.deepcopy(VALID_EXTRACTION)
-    payload["paper_concepts"][0]["evidence"][0]["page"] = 9
-    path = write_extraction(tmp_path, payload)
-    assert main(["save", "1", str(path), "--data-dir", str(data_dir)]) == 1
-    assert read_output(capsys)["status"] == "invalid"
-    assert not (data_dir / "papers" / "0001" / "extraction.json").exists()
 
 
 class FakeAgent:
@@ -188,7 +87,7 @@ def test_run_extracts_the_paper_and_writes_the_result(
 ) -> None:
     data_dir = copy_fixture(tmp_path)
     install_agent(monkeypatch, VALID_EXTRACTION)
-    assert main(["run", "1", "--data-dir", str(data_dir)]) == 0
+    assert main(["1", "--data-dir", str(data_dir)]) == 0
     written = data_dir / "papers" / "0001" / "extraction.json"
     output = read_output(capsys)
     assert output["status"] == "ok"
@@ -203,7 +102,7 @@ def test_run_counts_the_attempt_the_agent_needed_to_correct_itself(
 ) -> None:
     data_dir = copy_fixture(tmp_path)
     install_agent(monkeypatch, build_run_payload("a sentence the paper never wrote"), VALID_EXTRACTION)
-    assert main(["run", "1", "--data-dir", str(data_dir)]) == 0
+    assert main(["1", "--data-dir", str(data_dir)]) == 0
     assert read_output(capsys)["attempts"] == 2
 
 
@@ -213,7 +112,7 @@ def test_run_reports_the_issues_when_the_agent_keeps_failing(
     data_dir = copy_fixture(tmp_path)
     rejected = build_run_payload("a sentence the paper never wrote")
     install_agent(monkeypatch, rejected, rejected)
-    assert main(["run", "1", "--data-dir", str(data_dir), "--max-attempts", "2"]) == 1
+    assert main(["1", "--data-dir", str(data_dir), "--max-attempts", "2"]) == 1
     output = read_output(capsys)
     assert output["status"] == "invalid"
     assert output["attempts"] == 2
@@ -226,7 +125,7 @@ def test_run_reports_an_agent_that_cannot_be_started(
 ) -> None:
     data_dir = copy_fixture(tmp_path)
     install_failing_agent(monkeypatch, "claude was not found, so no extraction can run")
-    assert main(["run", "1", "--data-dir", str(data_dir)]) == 2
+    assert main(["1", "--data-dir", str(data_dir)]) == 2
     output = read_output(capsys)
     assert output["status"] == "error"
     assert "claude was not found" in output["message"]
@@ -237,7 +136,7 @@ def test_run_reports_an_unknown_paper(
 ) -> None:
     data_dir = copy_fixture(tmp_path)
     install_agent(monkeypatch, VALID_EXTRACTION)
-    assert main(["run", "9", "--data-dir", str(data_dir)]) == 2
+    assert main(["9", "--data-dir", str(data_dir)]) == 2
     assert read_output(capsys)["status"] == "error"
 
 
@@ -252,7 +151,7 @@ def test_run_passes_the_chosen_model_to_the_agent(
         return FakeAgent(VALID_EXTRACTION)
 
     monkeypatch.setattr(extract, "ClaudeCodeAgent", _build)
-    assert main(["run", "1", "--data-dir", str(data_dir), "--model", "claude-opus-4"]) == 0
+    assert main(["1", "--data-dir", str(data_dir), "--model", "claude-opus-4"]) == 0
     assert seen == ["claude-opus-4"]
 
 
@@ -263,19 +162,14 @@ def test_version_is_printed(capsys: pytest.CaptureFixture[str]) -> None:
     assert version("rkgk") in capsys.readouterr().out
 
 
-def test_no_subcommand_prints_help_and_returns_2(capsys: pytest.CaptureFixture[str]) -> None:
-    assert main([]) == 2
-    assert "usage" in capsys.readouterr().out
+def test_no_arguments_reports_a_usage_error(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as caught:
+        main([])
+    assert caught.value.code == 2
 
 
-def test_help_lists_the_actions(capsys: pytest.CaptureFixture[str]) -> None:
+def test_help_mentions_the_paper_id(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit) as caught:
         main(["--help"])
     assert caught.value.code == 0
-    assert "{schema,run,validate,save}" in capsys.readouterr().out
-
-
-def test_an_unknown_command_is_rejected() -> None:
-    with pytest.raises(SystemExit) as caught:
-        main(["publish"])
-    assert caught.value.code == 2
+    assert "paper_id" in capsys.readouterr().out
