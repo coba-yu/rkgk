@@ -1,6 +1,6 @@
-"""The CLI entry point for rkgk and the `extract` command.
+"""The `extract` command, installed as the console script of the same name.
 
-`main` builds the parser and dispatches to a subcommand, and `extract` is the only command so far: `run` drives
+`main` builds the parser and dispatches to an action: `run` drives
 the whole extraction with Claude and stores the result, while `schema`, `validate` and `save` expose the single
 steps for a payload that was produced by hand or by another tool.
 
@@ -45,9 +45,8 @@ def print_json(payload: dict[str, object]) -> None:
     print(json.dumps(payload, ensure_ascii=False))
 
 
-def register(subparsers: argparse._SubParsersAction) -> None:
-    parser = subparsers.add_parser(NAME, help=HELP)
-    actions = parser.add_subparsers(dest="action", required=True)
+def _add_actions(parser: argparse.ArgumentParser) -> None:
+    actions = parser.add_subparsers(dest="action")
     schema = actions.add_parser("schema", help="print the JSON Schema an extraction JSON must follow")
     schema.set_defaults(func=_run_schema)
     run = actions.add_parser("run", help="extract one paper with Claude and write the result next to it")
@@ -153,14 +152,13 @@ def _render_result(result: PaperExtraction) -> dict[str, object]:
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(prog="rkgk")
+    parser = argparse.ArgumentParser(prog=NAME, description=HELP)
     parser.add_argument(
         "--version",
         action="version",
         version=f"%(prog)s {version('rkgk')}",
     )
-    subparsers = parser.add_subparsers(dest="command")
-    register(subparsers)
+    _add_actions(parser)
     return parser
 
 
