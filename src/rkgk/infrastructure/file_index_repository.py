@@ -4,6 +4,9 @@ The vectors live in `embeddings.npy` and the items in `items.jsonl`, one item pe
 vectors, so the items stay diffable and greppable while the vectors stay a plain binary matrix.
 `find_embeddings` reassembles one `EmbeddingTable` from the pair, so a pair whose counts disagree is reported
 instead of being searched.
+The graph lives in `graph.json`, the pydantic JSON of `KnowledgeGraph`, rather than a networkx node-link dump:
+that way the stored graph gets the same schema validation on read as every other artifact, so a hand-edited or
+stale file fails loudly instead of being traversed.
 """
 
 import json
@@ -13,6 +16,7 @@ import numpy as np
 from pydantic import ValidationError
 
 from rkgk.domain.models.embedding import EmbeddedItem, EmbeddingTable
+from rkgk.domain.models.graph import KnowledgeGraph
 from rkgk.domain.repositories.index import (
     IndexArtifactInvalidError,
     IndexArtifactUnreadableError,
@@ -23,6 +27,7 @@ from rkgk.domain.repositories.index import (
 INDEX_DIR_NAME = "index"
 EMBEDDINGS_FILE_NAME = "embeddings.npy"
 ITEMS_FILE_NAME = "items.jsonl"
+GRAPH_FILE_NAME = "graph.json"
 
 
 def _fail(kind: type[IndexRepositoryError], path: Path, problem: str) -> IndexRepositoryError:
@@ -40,6 +45,10 @@ class FileIndexRepository:
     @property
     def items_path(self) -> Path:
         return self._dir / ITEMS_FILE_NAME
+
+    @property
+    def graph_path(self) -> Path:
+        return self._dir / GRAPH_FILE_NAME
 
     def save_embeddings(self, table: EmbeddingTable) -> None:
         lines = "".join(json.dumps(item.model_dump(mode="json"), ensure_ascii=False) + "\n" for item in table.items)
@@ -61,6 +70,31 @@ class FileIndexRepository:
             return EmbeddingTable(items=items, vectors=vectors)
         except ValidationError as error:
             raise _fail(IndexArtifactInvalidError, self._dir, f"is not a valid EmbeddingTable: {error}") from error
+
+    def save_graph(self, graph: KnowledgeGraph) -> None:
+        try:
+            self._dir.mkdir(parents=True, exist_ok=True)
+            self.graph_path.write_text(graph.model_dump_json(indent=2) + "\n", encoding="utf-8")
+        except OSError as error:
+            # A failed write is an environment problem, the same kind as a failed read, so it uses the same class.
+            raise _fail(
+                IndexArtifactUnreadableError, self._dir, f"cannot be written: {error.strerror or error}"
+            ) from error
+
+    def find_graph(self) -> KnowledgeGraph:
+        path = self.graph_path
+        try:
+            raw = path.read_text(encoding="utf-8")
+        except FileNotFoundError as error:
+            raise _fail(IndexNotFoundError, path, "not found") from error
+        except OSError as error:
+            raise _fail(IndexArtifactUnreadableError, path, f"cannot be read: {error.strerror or error}") from error
+        except UnicodeDecodeError as error:
+            raise _fail(IndexArtifactInvalidError, path, f"is not valid UTF-8: {error}") from error
+        try:
+            return KnowledgeGraph.model_validate_json(raw)
+        except ValidationError as error:
+            raise _fail(IndexArtifactInvalidError, path, f"is not a valid KnowledgeGraph: {error}") from error
 
     def _read_items(self) -> tuple[EmbeddedItem, ...]:
         path = self.items_path
