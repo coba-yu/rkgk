@@ -83,14 +83,17 @@ from rkgk.domain.repositories.paper_extraction import (
     PaperExtractionRepository,
     PaperExtractionRepositoryError,
 )
+from rkgk.domain.services.chunking import DEFAULT_MAX_TOKENS, chunk_paper
 from rkgk.domain.services.concept_normalization import check_normalization_against_extractions
 from rkgk.domain.services.paper_extraction import check_extraction_against_paper, normalize_whitespace
 from rkgk.domain.services.validation import format_error_path
+from rkgk.domain.tokenizers import Tokenizer
 
 DOMAIN_MODEL_VERSION = 1
 
 __all__ = [
     "CONCEPT_NORMALIZATION_SCHEMA_VERSION",
+    "DEFAULT_MAX_TOKENS",
     "DOMAIN_MODEL_VERSION",
     "EXTRACTION_SCHEMA_VERSION",
     "LOCAL_CONCEPT_ID_PATTERN",
@@ -152,6 +155,7 @@ __all__ = [
     "Slug",
     "StructuredOutputAgent",
     "StructuredOutputAgentError",
+    "Tokenizer",
     "build_concept_normalization_prompt",
     "build_concept_normalization_schema",
     "build_paper_dir_name",
@@ -159,6 +163,7 @@ __all__ = [
     "build_paper_extraction_schema",
     "check_extraction_against_paper",
     "check_normalization_against_extractions",
+    "chunk_paper",
     "describe_vocabulary",
     "format_error_path",
     "normalize_whitespace",
