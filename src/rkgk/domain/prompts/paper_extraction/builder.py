@@ -36,8 +36,6 @@ def build_paper_extraction_prompt(
         "",
         _read(_DIR / "rules.md"),
         "",
-        _read(_DIR / "identifiers.md"),
-        "",
         "# Paper",
         "",
         f"Id: {paper.meta.id}",
