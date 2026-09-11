@@ -136,26 +136,27 @@ def describe_vocabulary() -> str:
     """Render every enum as Markdown, one section per enum, in definition order.
 
     The text is embedded in agent prompts, so wording and order must stay stable; a snapshot test guards it.
+    Each enum is an `###` because the prompts drop this text under their own `## Vocabulary` heading.
     """
-    lines = ["## ConceptType", ""]
+    lines = ["### ConceptType", ""]
     for concept_type in ConceptType:
         spec = concept_type.spec
         lines.append(_member_line(concept_type.value, spec.description, *_traversal_notes(spec.traversable)))
 
-    lines += ["", "## PaperConceptRelation", ""]
+    lines += ["", "### PaperConceptRelation", ""]
     for paper_relation in PaperConceptRelation:
         relation_spec = paper_relation.spec
         lines.append(
             _member_line(paper_relation.value, relation_spec.description, *_traversal_notes(relation_spec.traversable))
         )
 
-    lines += ["", "## ConceptRelationType", ""]
+    lines += ["", "### ConceptRelationType", ""]
     for concept_relation in ConceptRelationType:
         edge_spec = concept_relation.spec
         notes = (f"方向: {edge_spec.direction}", *_traversal_notes(edge_spec.traversable))
         lines.append(_member_line(concept_relation.value, edge_spec.description, *notes))
 
-    lines += ["", "## Origin", ""]
+    lines += ["", "### Origin", ""]
     for origin in Origin:
         origin_spec = origin.spec
         note = "evidence が必須" if origin_spec.requires_evidence else "evidence なし"
