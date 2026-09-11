@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from rkgk.domain.models.paper_extraction import ExtractorError
+from rkgk.domain.agents import StructuredOutputAgentError
 from rkgk.infrastructure.claude_extractor import ClaudeExtractor
 
 SCHEMA: dict[str, object] = {
@@ -72,38 +72,38 @@ def test_a_model_is_passed_on_when_it_is_given(monkeypatch: pytest.MonkeyPatch) 
 def test_a_failing_command_is_reported_with_its_exit_code_and_stderr(tmp_path: Path) -> None:
     payload = {"type": "result", "subtype": "error_max_turns", "is_error": True, "structured_output": None}
     command = write_fake_claude(tmp_path, json.dumps(payload), stderr="ran out of turns", exit_code=1)
-    with pytest.raises(ExtractorError, match="error_max_turns"):
+    with pytest.raises(StructuredOutputAgentError, match="error_max_turns"):
         ClaudeExtractor(command=command).answer("prompt", SCHEMA)
 
 
 def test_an_error_flag_without_a_failing_exit_code_is_still_a_failure(tmp_path: Path) -> None:
     payload = {"type": "result", "subtype": "success", "is_error": True, "structured_output": {"answer": "hello"}}
     command = write_fake_claude(tmp_path, json.dumps(payload))
-    with pytest.raises(ExtractorError, match="reported a failure"):
+    with pytest.raises(StructuredOutputAgentError, match="reported a failure"):
         ClaudeExtractor(command=command).answer("prompt", SCHEMA)
 
 
 def test_an_answer_without_structured_output_is_reported(tmp_path: Path) -> None:
     payload = {"type": "result", "subtype": "success", "is_error": False, "result": "here you go"}
     command = write_fake_claude(tmp_path, json.dumps(payload))
-    with pytest.raises(ExtractorError, match="no structured output"):
+    with pytest.raises(StructuredOutputAgentError, match="no structured output"):
         ClaudeExtractor(command=command).answer("prompt", SCHEMA)
 
 
 def test_output_that_is_not_json_is_reported_with_an_excerpt(tmp_path: Path) -> None:
     command = write_fake_claude(tmp_path, "not json at all")
-    with pytest.raises(ExtractorError, match="not JSON: not json at all"):
+    with pytest.raises(StructuredOutputAgentError, match="not JSON: not json at all"):
         ClaudeExtractor(command=command).answer("prompt", SCHEMA)
 
 
 def test_output_that_is_a_json_array_is_reported(tmp_path: Path) -> None:
     command = write_fake_claude(tmp_path, "[1, 2]")
-    with pytest.raises(ExtractorError, match="instead of an object"):
+    with pytest.raises(StructuredOutputAgentError, match="instead of an object"):
         ClaudeExtractor(command=command).answer("prompt", SCHEMA)
 
 
 def test_a_missing_command_is_reported(tmp_path: Path) -> None:
-    with pytest.raises(ExtractorError, match="was not found"):
+    with pytest.raises(StructuredOutputAgentError, match="was not found"):
         ClaudeExtractor(command=str(tmp_path / "absent")).answer("prompt", SCHEMA)
 
 
@@ -112,7 +112,7 @@ def test_a_command_that_never_answers_is_reported(monkeypatch: pytest.MonkeyPatc
         raise subprocess.TimeoutExpired(command, 1.5)
 
     monkeypatch.setattr(subprocess, "run", _fake_run)
-    with pytest.raises(ExtractorError, match="did not answer within 1.5 seconds"):
+    with pytest.raises(StructuredOutputAgentError, match="did not answer within 1.5 seconds"):
         ClaudeExtractor(timeout_seconds=1.5).answer("prompt", SCHEMA)
 
 

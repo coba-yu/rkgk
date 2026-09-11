@@ -4,7 +4,7 @@ The vocabulary and the entities are versioned together: index manifests record `
 so an index built with an older model can be detected and rebuilt.
 """
 
-from rkgk.domain.agents import StructuredOutputAgent
+from rkgk.domain.agents import StructuredOutputAgent, StructuredOutputAgentError
 from rkgk.domain.models.base import SLUG_PATTERN, Entity, Slug
 from rkgk.domain.models.chunk import Chunk
 from rkgk.domain.models.graph import Concept, ConceptEdge, Evidence, PaperConceptEdge
@@ -29,7 +29,6 @@ from rkgk.domain.models.paper_extraction import (
     ExtractedPaperConceptEdge,
     ExtractionIssue,
     ExtractionValidationError,
-    ExtractorError,
     LocalConceptId,
     PaperExtraction,
     PaperExtractionRun,
@@ -95,7 +94,6 @@ __all__ = [
     "ExtractionRepository",
     "ExtractionRepositoryError",
     "ExtractionValidationError",
-    "ExtractorError",
     "LocalConceptId",
     "MarkerKind",
     "Origin",
@@ -118,6 +116,7 @@ __all__ = [
     "RelationSpec",
     "Slug",
     "StructuredOutputAgent",
+    "StructuredOutputAgentError",
     "build_extraction_prompt",
     "build_extraction_schema",
     "build_paper_dir_name",

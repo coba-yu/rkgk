@@ -1,7 +1,7 @@
 import pytest
 
-from rkgk.domain.agents import StructuredOutputAgent
-from rkgk.domain.models.paper_extraction import ExtractionValidationError, ExtractorError
+from rkgk.domain.agents import StructuredOutputAgent, StructuredOutputAgentError
+from rkgk.domain.models.paper_extraction import ExtractionValidationError
 from rkgk.domain.repositories.paper import PaperNotFoundError
 from rkgk.usecase.extract_paper import ExtractPaperUseCase
 from tests.usecase.fakes import FakeExtractionRepository, FakePaperRepository, build_paper
@@ -48,7 +48,7 @@ class FakeAgent:
 
 class FailingAgent:
     def answer(self, prompt: str, schema: dict[str, object]) -> object:
-        raise ExtractorError("claude was not found, so no extraction can run")
+        raise StructuredOutputAgentError("claude was not found, so no extraction can run")
 
 
 def build_use_case(
@@ -101,8 +101,8 @@ def test_an_answer_that_is_not_an_extraction_at_all_is_retried() -> None:
     assert outcome.attempts == 2
 
 
-def test_the_extractor_error_is_propagated() -> None:
-    with pytest.raises(ExtractorError, match="was not found"):
+def test_the_agent_error_is_propagated() -> None:
+    with pytest.raises(StructuredOutputAgentError, match="was not found"):
         build_use_case(FailingAgent(), FakeExtractionRepository()).execute(1)
 
 

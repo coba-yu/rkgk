@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 from rkgk.cli import extract, main
-from rkgk.domain.models.paper_extraction import ExtractorError
+from rkgk.domain.agents import StructuredOutputAgentError
 
 FIXTURE_DIR = Path(__file__).parent.parent / "fixtures"
 
@@ -176,7 +176,7 @@ def install_agent(monkeypatch: pytest.MonkeyPatch, *payloads: object) -> None:
 def install_failing_agent(monkeypatch: pytest.MonkeyPatch, message: str) -> None:
     class FailingAgent:
         def answer(self, prompt: str, schema: dict[str, object]) -> object:
-            raise ExtractorError(message)
+            raise StructuredOutputAgentError(message)
 
     monkeypatch.setattr(extract, "ClaudeExtractor", lambda model=None: FailingAgent())
 

@@ -277,7 +277,3 @@ class PaperExtractionRun(Entity):
 
     extraction: PaperExtraction
     attempts: int = Field(ge=1)
-
-
-class ExtractorError(Exception):
-    """Raised when the agent could not be run or answered with something other than the requested JSON."""

@@ -10,10 +10,10 @@ from collections.abc import Callable
 from pathlib import Path
 
 from rkgk.cli._output import EXIT_ERROR, EXIT_INVALID, EXIT_OK, print_json
+from rkgk.domain.agents import StructuredOutputAgentError
 from rkgk.domain.models.paper_extraction import (
     ExtractionIssue,
     ExtractionValidationError,
-    ExtractorError,
     PaperExtraction,
     build_extraction_schema,
 )
@@ -80,7 +80,7 @@ def _run_run(args: argparse.Namespace) -> int:
             }
         )
         return EXIT_INVALID
-    except (ExtractorError, PaperRepositoryError, ExtractionRepositoryError) as error:
+    except (StructuredOutputAgentError, PaperRepositoryError, ExtractionRepositoryError) as error:
         print_json({"status": "error", "message": str(error)})
         return EXIT_ERROR
     payload: dict[str, object] = {

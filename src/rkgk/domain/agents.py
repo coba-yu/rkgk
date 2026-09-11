@@ -11,3 +11,7 @@ class StructuredOutputAgent(Protocol):
     """An agent that answers a prompt with JSON that follows the given schema."""
 
     def answer(self, prompt: str, schema: dict[str, object]) -> object: ...
+
+
+class StructuredOutputAgentError(Exception):
+    """Raised when the agent could not be run or answered with something other than the requested JSON."""

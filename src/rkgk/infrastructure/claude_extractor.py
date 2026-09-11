@@ -15,7 +15,7 @@ A run that hits the turn limit exits 1 with `is_error: true`, `subtype: "error_m
 import json
 import subprocess
 
-from rkgk.domain.models.paper_extraction import ExtractorError
+from rkgk.domain.agents import StructuredOutputAgentError
 
 # The structured answer costs a turn of its own on top of the assistant turn, so one turn can never succeed.
 MAX_TURNS = "2"
@@ -40,13 +40,15 @@ class ClaudeExtractor:
         completed = self._run(prompt, schema)
         payload = self._parse(completed)
         if completed.returncode != 0 or payload.get("is_error") or payload.get("subtype") != "success":
-            raise ExtractorError(
+            raise StructuredOutputAgentError(
                 f"{self._command} reported a failure: exit code {completed.returncode}, "
                 f"subtype {payload.get('subtype')!r}{self._stderr_note(completed.stderr)}"
             )
         structured_output = payload.get("structured_output")
         if structured_output is None:
-            raise ExtractorError(f"{self._command} returned no structured output{self._stderr_note(completed.stderr)}")
+            raise StructuredOutputAgentError(
+                f"{self._command} returned no structured output{self._stderr_note(completed.stderr)}"
+            )
         return structured_output
 
     def _build_command(self, schema: dict[str, object]) -> list[str]:
@@ -76,20 +78,22 @@ class ClaudeExtractor:
                 timeout=self._timeout_seconds,
             )
         except FileNotFoundError as error:
-            raise ExtractorError(f"{self._command} was not found, so no extraction can run") from error
+            raise StructuredOutputAgentError(f"{self._command} was not found, so no extraction can run") from error
         except subprocess.TimeoutExpired as error:
-            raise ExtractorError(f"{self._command} did not answer within {self._timeout_seconds} seconds") from error
+            raise StructuredOutputAgentError(
+                f"{self._command} did not answer within {self._timeout_seconds} seconds"
+            ) from error
 
     def _parse(self, completed: subprocess.CompletedProcess[str]) -> dict[str, object]:
         try:
             payload = json.loads(completed.stdout)
         except json.JSONDecodeError as error:
-            raise ExtractorError(
+            raise StructuredOutputAgentError(
                 f"{self._command} exited with code {completed.returncode} and printed output that is not JSON: "
                 f"{_excerpt(completed.stdout)}{self._stderr_note(completed.stderr)}"
             ) from error
         if not isinstance(payload, dict):
-            raise ExtractorError(
+            raise StructuredOutputAgentError(
                 f"{self._command} printed a JSON {type(payload).__name__} instead of an object: "
                 f"{_excerpt(completed.stdout)}"
             )
