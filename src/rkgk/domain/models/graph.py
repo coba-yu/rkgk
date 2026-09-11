@@ -25,6 +25,24 @@ class Evidence(Entity):
         return value
 
 
+class UnresolvedEvidence(Entity):
+    """A quote that appears on its page but in no single chunk of that page, identified by where it was claimed."""
+
+    paper_id: int = Field(ge=1)
+    page: int = Field(ge=1)
+    quote: str
+
+
+class EvidenceResolutionError(Exception):
+    """Raised when evidence of a paper cannot be tied to a chunk; carries every unresolved quote at once."""
+
+    def __init__(self, unresolved: tuple[UnresolvedEvidence, ...]) -> None:
+        super().__init__(
+            "; ".join(f"paper {item.paper_id} page {item.page}: quote {item.quote!r}" for item in unresolved)
+        )
+        self.unresolved = unresolved
+
+
 class Concept(Entity):
     """A node of the graph: one canonical concept shared by every paper that refers to it."""
 
