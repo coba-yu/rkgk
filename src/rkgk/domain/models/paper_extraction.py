@@ -9,7 +9,7 @@ The prompt is built here too, so the rules the agent is told and the rules that 
 
 import json
 import re
-from typing import Annotated, Literal, Protocol, Self
+from typing import Annotated, Literal, Self
 
 from pydantic import Field, field_validator, model_validator
 
@@ -277,12 +277,6 @@ class PaperExtractionRun(Entity):
 
     extraction: PaperExtraction
     attempts: int = Field(ge=1)
-
-
-class Extractor(Protocol):
-    """An agent that answers a prompt with JSON that follows the given schema."""
-
-    def extract(self, prompt: str, schema: dict[str, object]) -> object: ...
 
 
 class ExtractorError(Exception):

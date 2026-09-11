@@ -1,9 +1,9 @@
 """Use case that extracts one paper with an agent and stores the result."""
 
+from rkgk.domain.agents import StructuredOutputAgent
 from rkgk.domain.models.paper_extraction import (
     ExtractionIssue,
     ExtractionValidationError,
-    Extractor,
     PaperExtractionRun,
     build_extraction_prompt,
     build_extraction_schema,
@@ -17,12 +17,12 @@ class ExtractPaperUseCase:
     def __init__(
         self,
         paper_repository: PaperRepository,
-        extractor: Extractor,
+        agent: StructuredOutputAgent,
         extraction_repository: ExtractionRepository,
         max_attempts: int = 3,
     ) -> None:
         self._paper_repository = paper_repository
-        self._extractor = extractor
+        self._agent = agent
         self._extraction_repository = extraction_repository
         self._validate = ValidateExtractionUseCase(paper_repository)
         self._max_attempts = max_attempts
@@ -36,7 +36,7 @@ class ExtractPaperUseCase:
         issues: tuple[ExtractionIssue, ...] = ()
         while True:
             attempts += 1
-            payload = self._extractor.extract(build_extraction_prompt(paper, previous, issues), schema)
+            payload = self._agent.answer(build_extraction_prompt(paper, previous, issues), schema)
             try:
                 result = self._validate.execute(paper_id, payload)
             except ExtractionValidationError as error:

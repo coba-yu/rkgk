@@ -159,26 +159,26 @@ def test_save_writes_nothing_when_the_extraction_is_invalid(
     assert not (data_dir / "papers" / "0001" / "extraction.json").exists()
 
 
-class FakeExtractor:
+class FakeAgent:
     """Stands in for the Claude CLI so the command tests never spawn an agent."""
 
     def __init__(self, *payloads: object) -> None:
         self._payloads = list(payloads)
 
-    def extract(self, prompt: str, schema: dict[str, object]) -> object:
+    def answer(self, prompt: str, schema: dict[str, object]) -> object:
         return self._payloads.pop(0)
 
 
-def install_extractor(monkeypatch: pytest.MonkeyPatch, *payloads: object) -> None:
-    monkeypatch.setattr(extract, "ClaudeExtractor", lambda model=None: FakeExtractor(*payloads))
+def install_agent(monkeypatch: pytest.MonkeyPatch, *payloads: object) -> None:
+    monkeypatch.setattr(extract, "ClaudeExtractor", lambda model=None: FakeAgent(*payloads))
 
 
-def install_failing_extractor(monkeypatch: pytest.MonkeyPatch, message: str) -> None:
-    class _Failing:
-        def extract(self, prompt: str, schema: dict[str, object]) -> object:
+def install_failing_agent(monkeypatch: pytest.MonkeyPatch, message: str) -> None:
+    class FailingAgent:
+        def answer(self, prompt: str, schema: dict[str, object]) -> object:
             raise ExtractorError(message)
 
-    monkeypatch.setattr(extract, "ClaudeExtractor", lambda model=None: _Failing())
+    monkeypatch.setattr(extract, "ClaudeExtractor", lambda model=None: FailingAgent())
 
 
 def build_run_payload(quote: str) -> dict[str, Any]:
@@ -191,7 +191,7 @@ def test_run_extracts_the_paper_and_writes_the_result(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     data_dir = copy_fixture(tmp_path)
-    install_extractor(monkeypatch, VALID_EXTRACTION)
+    install_agent(monkeypatch, VALID_EXTRACTION)
     assert main(["extract", "run", "1", "--data-dir", str(data_dir)]) == 0
     written = data_dir / "papers" / "0001" / "extraction.json"
     output = read_output(capsys)
@@ -206,7 +206,7 @@ def test_run_counts_the_attempt_the_agent_needed_to_correct_itself(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     data_dir = copy_fixture(tmp_path)
-    install_extractor(monkeypatch, build_run_payload("a sentence the paper never wrote"), VALID_EXTRACTION)
+    install_agent(monkeypatch, build_run_payload("a sentence the paper never wrote"), VALID_EXTRACTION)
     assert main(["extract", "run", "1", "--data-dir", str(data_dir)]) == 0
     assert read_output(capsys)["attempts"] == 2
 
@@ -216,7 +216,7 @@ def test_run_reports_the_issues_when_the_agent_keeps_failing(
 ) -> None:
     data_dir = copy_fixture(tmp_path)
     rejected = build_run_payload("a sentence the paper never wrote")
-    install_extractor(monkeypatch, rejected, rejected)
+    install_agent(monkeypatch, rejected, rejected)
     assert main(["extract", "run", "1", "--data-dir", str(data_dir), "--max-attempts", "2"]) == 1
     output = read_output(capsys)
     assert output["status"] == "invalid"
@@ -229,7 +229,7 @@ def test_run_reports_an_agent_that_cannot_be_started(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     data_dir = copy_fixture(tmp_path)
-    install_failing_extractor(monkeypatch, "claude was not found, so no extraction can run")
+    install_failing_agent(monkeypatch, "claude was not found, so no extraction can run")
     assert main(["extract", "run", "1", "--data-dir", str(data_dir)]) == 2
     output = read_output(capsys)
     assert output["status"] == "error"
@@ -240,7 +240,7 @@ def test_run_reports_an_unknown_paper(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     data_dir = copy_fixture(tmp_path)
-    install_extractor(monkeypatch, VALID_EXTRACTION)
+    install_agent(monkeypatch, VALID_EXTRACTION)
     assert main(["extract", "run", "9", "--data-dir", str(data_dir)]) == 2
     assert read_output(capsys)["status"] == "error"
 
@@ -251,9 +251,9 @@ def test_run_passes_the_chosen_model_to_the_extractor(
     data_dir = copy_fixture(tmp_path)
     seen: list[str | None] = []
 
-    def _build(model: str | None = None) -> FakeExtractor:
+    def _build(model: str | None = None) -> FakeAgent:
         seen.append(model)
-        return FakeExtractor(VALID_EXTRACTION)
+        return FakeAgent(VALID_EXTRACTION)
 
     monkeypatch.setattr(extract, "ClaudeExtractor", _build)
     assert main(["extract", "run", "1", "--data-dir", str(data_dir), "--model", "claude-opus-4"]) == 0

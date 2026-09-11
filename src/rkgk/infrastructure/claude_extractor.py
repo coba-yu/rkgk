@@ -1,4 +1,4 @@
-"""Extractor backed by the Claude Code CLI running headless.
+"""Structured-output agent backed by the Claude Code CLI running headless.
 
 `claude -p --output-format json --json-schema <schema>` reads the prompt from stdin and prints one JSON object
 on stdout whose keys are, as observed with version 2.1.259:
@@ -36,7 +36,7 @@ class ClaudeExtractor:
         self._timeout_seconds = timeout_seconds
         self._command = command
 
-    def extract(self, prompt: str, schema: dict[str, object]) -> object:
+    def answer(self, prompt: str, schema: dict[str, object]) -> object:
         completed = self._run(prompt, schema)
         payload = self._parse(completed)
         if completed.returncode != 0 or payload.get("is_error") or payload.get("subtype") != "success":
