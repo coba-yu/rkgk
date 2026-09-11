@@ -26,6 +26,7 @@ from rkgk.domain.models.graph import (
     ConceptEdge,
     Evidence,
     EvidenceResolutionError,
+    KnowledgeGraph,
     PaperConceptEdge,
     UnresolvedEvidence,
 )
@@ -103,6 +104,7 @@ from rkgk.domain.services.chunking import DEFAULT_MAX_TOKENS, chunk_paper
 from rkgk.domain.services.concept_normalization import check_normalization_against_extractions
 from rkgk.domain.services.embedding_items import build_embedding_items, concept_embedding_text
 from rkgk.domain.services.evidence_resolver import find_chunk, resolve_extraction_evidence
+from rkgk.domain.services.graph_builder import build_knowledge_graph, paper_node_id, to_networkx
 from rkgk.domain.services.paper_extraction import check_extraction_against_paper, normalize_whitespace
 from rkgk.domain.services.validation import format_error_path
 from rkgk.domain.tokenizers import Tokenizer
@@ -152,6 +154,7 @@ __all__ = [
     "IndexNotFoundError",
     "IndexRepository",
     "IndexRepositoryError",
+    "KnowledgeGraph",
     "LocalConceptId",
     "LocalConceptRef",
     "MarkerKind",
@@ -190,6 +193,7 @@ __all__ = [
     "build_concept_normalization_prompt",
     "build_concept_normalization_schema",
     "build_embedding_items",
+    "build_knowledge_graph",
     "build_paper_dir_name",
     "build_paper_extraction_prompt",
     "build_paper_extraction_schema",
@@ -201,8 +205,10 @@ __all__ = [
     "find_chunk",
     "format_error_path",
     "normalize_whitespace",
+    "paper_node_id",
     "parse_page",
     "resolve_extraction_evidence",
+    "to_networkx",
     "traversable_concept_relations",
     "traversable_concept_types",
     "traversable_paper_relations",
