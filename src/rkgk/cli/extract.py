@@ -96,16 +96,18 @@ def _run_run(args: argparse.Namespace) -> int:
 
 def _run_validate(args: argparse.Namespace) -> int:
     use_case = ValidatePaperExtractionUseCase(FilePaperRepository(args.data_dir))
-    return _run(args, use_case.execute, {})
+    return _run_payload_action(args, use_case.execute, {})
 
 
 def _run_save(args: argparse.Namespace) -> int:
     extraction_repository = FilePaperExtractionRepository(args.data_dir)
     use_case = SavePaperExtractionUseCase(FilePaperRepository(args.data_dir), extraction_repository)
-    return _run(args, use_case.execute, {"path": str(extraction_repository.path_for(args.paper_id))})
+    return _run_payload_action(args, use_case.execute, {"path": str(extraction_repository.path_for(args.paper_id))})
 
 
-def _run(args: argparse.Namespace, execute: Callable[[int, object], PaperExtraction], extra: dict[str, object]) -> int:
+def _run_payload_action(
+    args: argparse.Namespace, execute: Callable[[int, object], PaperExtraction], extra: dict[str, object]
+) -> int:
     try:
         payload = json.loads(args.json_path.read_text(encoding="utf-8"))
         result = execute(args.paper_id, payload)
