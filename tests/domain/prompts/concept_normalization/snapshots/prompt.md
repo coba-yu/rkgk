@@ -59,5 +59,3 @@
 - c1 | RAG | method
 - c2 | Knowledge Graph | method | aliases: KG | A graph of concepts and their relations.
 </paper>
-
-JSON オブジェクトだけを返す。

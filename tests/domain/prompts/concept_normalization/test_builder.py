@@ -67,8 +67,8 @@ def test_the_prompt_lists_every_paper_with_its_concepts_aliases_and_description(
     assert "- c2 | Page-Aligned Chunking | method\n" in prompt
 
 
-def test_the_prompt_ends_by_asking_for_the_json_alone() -> None:
-    assert build_concept_normalization_prompt(EXTRACTIONS).endswith("JSON オブジェクトだけを返す。\n")
+def test_the_prompt_ends_with_the_last_paper() -> None:
+    assert build_concept_normalization_prompt(EXTRACTIONS).endswith("</paper>\n")
 
 
 def test_a_first_attempt_mentions_neither_a_previous_answer_nor_issues() -> None:

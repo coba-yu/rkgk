@@ -49,5 +49,4 @@ def build_paper_extraction_prompt(
         lines += ["", f'<page number="{page.number}">', page.text.rstrip("\n"), "</page>"]
     if previous is not None:
         lines += build_retry_section(previous, issues)
-    lines += ["", _read(_SHARED_DIR / "closing.md")]
     return "\n".join(lines) + "\n"

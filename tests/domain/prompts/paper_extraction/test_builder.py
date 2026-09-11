@@ -43,8 +43,8 @@ def test_the_prompt_holds_every_page_with_its_number_and_text() -> None:
     assert "<!-- equation: 1 -->" in prompt
 
 
-def test_the_prompt_ends_by_asking_for_the_json_alone() -> None:
-    assert build_paper_extraction_prompt(load_fixture_paper()).endswith("JSON オブジェクトだけを返す。\n")
+def test_the_prompt_ends_with_the_last_page_of_the_paper() -> None:
+    assert build_paper_extraction_prompt(load_fixture_paper()).endswith("</page>\n")
 
 
 def test_a_first_attempt_mentions_neither_a_previous_answer_nor_issues() -> None:

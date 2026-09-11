@@ -87,5 +87,3 @@ Equation (1) mixes the chunk similarity with a graph score, and alpha controls h
 
 [1] Ada Lovelace. Notes on the Analytical Engine. 1843.
 </page>
-
-JSON オブジェクトだけを返す。

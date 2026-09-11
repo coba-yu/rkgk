@@ -58,5 +58,4 @@ def build_concept_normalization_prompt(
         lines += ["", f'<paper id="{extraction.paper_id}">', *_describe_concepts(extraction), "</paper>"]
     if previous is not None:
         lines += build_retry_section(previous, issues)
-    lines += ["", _read(_SHARED_DIR / "closing.md")]
     return "\n".join(lines) + "\n"
