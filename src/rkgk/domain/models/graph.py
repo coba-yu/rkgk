@@ -137,28 +137,32 @@ class KnowledgeGraph(Entity):
 
     @model_validator(mode="after")
     def _check_references(self) -> Self:
-        """Every edge must join declared nodes, and no node or edge may be declared twice."""
-        papers: set[int] = set()
-        for paper_id in self.paper_ids:
-            if paper_id in papers:
-                raise ValueError(f"paper_ids declares {paper_id} more than once")
-            papers.add(paper_id)
+        """Every edge must join declared nodes, and no node or edge may be declared twice.
 
-        declared: set[str] = set()
+        The `declared_*` sets are kept to check the edges against; the `seen_*` sets only catch a repeated edge.
+        """
+        declared_papers: set[int] = set()
+        for paper_id in self.paper_ids:
+            if paper_id in declared_papers:
+                raise ValueError(f"paper_ids declares {paper_id} more than once")
+            declared_papers.add(paper_id)
+
+        declared_concepts: set[str] = set()
         for concept in self.concepts:
-            if concept.id in declared:
+            if concept.id in declared_concepts:
                 raise ValueError(f"concepts declares {concept.id!r} more than once")
-            declared.add(concept.id)
-            if concept.paper_count > len(papers):
+            declared_concepts.add(concept.id)
+            if concept.paper_count > len(declared_papers):
                 raise ValueError(
-                    f"concept {concept.id!r} counts {concept.paper_count} papers but the graph has {len(papers)}"
+                    f"concept {concept.id!r} counts {concept.paper_count} papers "
+                    f"but the graph has {len(declared_papers)}"
                 )
 
         seen_paper_edges: set[tuple[int, str, PaperConceptRelation]] = set()
         for edge in self.paper_concepts:
-            if edge.paper_id not in papers:
+            if edge.paper_id not in declared_papers:
                 raise ValueError(f"paper_concepts refers to the undeclared paper {edge.paper_id}")
-            if edge.concept_id not in declared:
+            if edge.concept_id not in declared_concepts:
                 raise ValueError(f"paper_concepts refers to the undeclared concept {edge.concept_id!r}")
             key = (edge.paper_id, edge.concept_id, edge.relation)
             if key in seen_paper_edges:
@@ -171,9 +175,9 @@ class KnowledgeGraph(Entity):
         seen_concept_edges: set[tuple[str, str, ConceptRelationType, Origin, int | None]] = set()
         for concept_edge in self.concept_relations:
             for slug in (concept_edge.source_id, concept_edge.target_id):
-                if slug not in declared:
+                if slug not in declared_concepts:
                     raise ValueError(f"concept_relations refers to the undeclared concept {slug!r}")
-            if concept_edge.paper_id is not None and concept_edge.paper_id not in papers:
+            if concept_edge.paper_id is not None and concept_edge.paper_id not in declared_papers:
                 raise ValueError(f"concept_relations refers to the undeclared paper {concept_edge.paper_id}")
             edge_key = (
                 concept_edge.source_id,
