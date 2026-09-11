@@ -44,11 +44,11 @@ def build_concept_normalization_prompt(
     lines = [
         _read(_DIR / "task.md"),
         "",
-        _read(_DIR / "rules.md"),
-        "",
         _read(_SHARED_DIR / "vocabulary.md"),
         "",
         describe_vocabulary().rstrip("\n"),
+        "",
+        _read(_DIR / "rules.md"),
         "",
         _read(_DIR / "papers.md"),
     ]

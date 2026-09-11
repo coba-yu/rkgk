@@ -33,13 +33,13 @@ def test_the_prompt_carries_the_vocabulary_and_the_paper_id() -> None:
     prompt = build_paper_extraction_prompt(load_fixture_paper())
     assert describe_vocabulary().rstrip("\n") in prompt
     assert "Id: 1" in prompt
-    assert "`paper_id` には `## Paper` に示した Id を設定する。" in prompt
+    assert "`paper_id` には `# Paper` に示した Id を設定する。" in prompt
 
 
 def test_the_prompt_holds_every_page_with_its_number_and_text() -> None:
     prompt = build_paper_extraction_prompt(load_fixture_paper())
-    assert prompt.count("## Page ") == 3
-    assert "## Page 2\n\n## Method" in prompt
+    assert prompt.count('<page number="') == 3
+    assert '<page number="2">\n## Method' in prompt
     assert "<!-- equation: 1 -->" in prompt
 
 

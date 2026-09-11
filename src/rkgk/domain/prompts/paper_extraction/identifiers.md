@@ -1,6 +1,6 @@
-## Identifiers
+### Identifiers
 
 - すべての概念に、宣言した順で `c1`、`c2`、... というローカル id を付ける。
 - 参照するのはそれらのローカル id だけにする。`paper_concepts` と `concept_relations` では他の id を使わない。
 - グローバル id や slug を作り出さない。この工程の後で正規化がそれらを割り当てるためである。
-- `paper_id` には `## Paper` に示した Id を設定する。
+- `paper_id` には `# Paper` に示した Id を設定する。

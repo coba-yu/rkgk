@@ -30,23 +30,25 @@ def build_paper_extraction_prompt(
     lines = [
         _read(_DIR / "task.md"),
         "",
-        _read(_DIR / "rules.md"),
-        "",
         _read(_SHARED_DIR / "vocabulary.md"),
         "",
         describe_vocabulary().rstrip("\n"),
         "",
+        _read(_DIR / "rules.md"),
+        "",
         _read(_DIR / "identifiers.md"),
         "",
-        "## Paper",
+        "# Paper",
         "",
         f"Id: {paper.meta.id}",
         f"Title: {paper.meta.title}",
         f"Year: {paper.meta.year}",
         f"Venue: {paper.meta.venue}",
     ]
+    # The page text is Markdown of its own, so it is fenced in a tag instead of a heading; a heading would
+    # put the paper's own headings on the same footing as the prompt's and blur where a page starts and ends.
     for page in paper.pages:
-        lines += ["", f"## Page {page.number}", "", page.text.rstrip("\n")]
+        lines += ["", f'<page number="{page.number}">', page.text.rstrip("\n"), "</page>"]
     if previous is not None:
         lines += [
             "",
