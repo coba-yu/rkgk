@@ -1,15 +1,15 @@
 """Builds the prompt that asks an agent to extract the knowledge graph of one paper.
 
-The static prose lives in the .md files next to this module and in ../shared; this module only assembles
-the sections, loops over the paper's pages, and appends the retry section.
+The static prose lives in the .md files next to this module and in ../shared, and the retry wording in
+../retry.py; this module only assembles the sections and loops over the paper's pages.
 """
 
-import json
 from pathlib import Path
 
 from rkgk.domain.models.paper import Paper
 from rkgk.domain.models.paper_extraction import PaperExtractionIssue
 from rkgk.domain.models.vocabulary import describe_vocabulary
+from rkgk.domain.prompts.retry import build_retry_section
 
 _DIR = Path(__file__).parent
 _SHARED_DIR = _DIR.parent / "shared"
@@ -48,19 +48,6 @@ def build_paper_extraction_prompt(
     for page in paper.pages:
         lines += ["", f'<page number="{page.number}">', page.text.rstrip("\n"), "</page>"]
     if previous is not None:
-        lines += [
-            "",
-            _read(_SHARED_DIR / "previous_attempt.md"),
-            "",
-            "```json",
-            json.dumps(previous, ensure_ascii=False, indent=2),
-            "```",
-            "",
-            "## Issues",
-            "",
-            *(f"- {issue.path}: {issue.message}" for issue in issues),
-            "",
-            _read(_SHARED_DIR / "issues.md"),
-        ]
+        lines += build_retry_section(previous, issues)
     lines += ["", _read(_SHARED_DIR / "closing.md")]
     return "\n".join(lines) + "\n"

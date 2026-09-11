@@ -1,15 +1,15 @@
 """Builds the prompt that asks an agent to normalize the concepts extracted from every paper.
 
-The static prose lives in the .md files next to this module and in ../shared; this module only assembles
-the sections, loops over the extracted concepts, and appends the retry section.
+The static prose lives in the .md files next to this module and in ../shared, and the retry wording in
+../retry.py; this module only assembles the sections and loops over the extracted concepts.
 """
 
-import json
 from pathlib import Path
 
 from rkgk.domain.models.concept_normalization import ConceptNormalizationIssue
 from rkgk.domain.models.paper_extraction import PaperExtraction
 from rkgk.domain.models.vocabulary import describe_vocabulary
+from rkgk.domain.prompts.retry import build_retry_section
 
 _DIR = Path(__file__).parent
 _SHARED_DIR = _DIR.parent / "shared"
@@ -57,19 +57,6 @@ def build_concept_normalization_prompt(
     for extraction in extractions:
         lines += ["", f'<paper id="{extraction.paper_id}">', *_describe_concepts(extraction), "</paper>"]
     if previous is not None:
-        lines += [
-            "",
-            _read(_SHARED_DIR / "previous_attempt.md"),
-            "",
-            "```json",
-            json.dumps(previous, ensure_ascii=False, indent=2),
-            "```",
-            "",
-            "## Issues",
-            "",
-            *(f"- {issue.path}: {issue.message}" for issue in issues),
-            "",
-            _read(_SHARED_DIR / "issues.md"),
-        ]
+        lines += build_retry_section(previous, issues)
     lines += ["", _read(_SHARED_DIR / "closing.md")]
     return "\n".join(lines) + "\n"
