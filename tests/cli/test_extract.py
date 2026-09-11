@@ -170,7 +170,7 @@ class FakeAgent:
 
 
 def install_agent(monkeypatch: pytest.MonkeyPatch, *payloads: object) -> None:
-    monkeypatch.setattr(extract, "ClaudeExtractor", lambda model=None: FakeAgent(*payloads))
+    monkeypatch.setattr(extract, "ClaudeCodeAgent", lambda model=None: FakeAgent(*payloads))
 
 
 def install_failing_agent(monkeypatch: pytest.MonkeyPatch, message: str) -> None:
@@ -178,7 +178,7 @@ def install_failing_agent(monkeypatch: pytest.MonkeyPatch, message: str) -> None
         def answer(self, prompt: str, schema: dict[str, object]) -> object:
             raise StructuredOutputAgentError(message)
 
-    monkeypatch.setattr(extract, "ClaudeExtractor", lambda model=None: FailingAgent())
+    monkeypatch.setattr(extract, "ClaudeCodeAgent", lambda model=None: FailingAgent())
 
 
 def build_run_payload(quote: str) -> dict[str, Any]:
@@ -245,7 +245,7 @@ def test_run_reports_an_unknown_paper(
     assert read_output(capsys)["status"] == "error"
 
 
-def test_run_passes_the_chosen_model_to_the_extractor(
+def test_run_passes_the_chosen_model_to_the_agent(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     data_dir = copy_fixture(tmp_path)
@@ -255,6 +255,6 @@ def test_run_passes_the_chosen_model_to_the_extractor(
         seen.append(model)
         return FakeAgent(VALID_EXTRACTION)
 
-    monkeypatch.setattr(extract, "ClaudeExtractor", _build)
+    monkeypatch.setattr(extract, "ClaudeCodeAgent", _build)
     assert main(["extract", "run", "1", "--data-dir", str(data_dir), "--model", "claude-opus-4"]) == 0
     assert seen == ["claude-opus-4"]

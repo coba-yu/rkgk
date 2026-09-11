@@ -30,7 +30,7 @@ def _excerpt(text: str) -> str:
     return stripped[:_EXCERPT_LIMIT] + "..."
 
 
-class ClaudeExtractor:
+class ClaudeCodeAgent:
     def __init__(self, model: str | None = None, timeout_seconds: float = 600.0, command: str = "claude") -> None:
         self._model = model
         self._timeout_seconds = timeout_seconds

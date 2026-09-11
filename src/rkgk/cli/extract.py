@@ -19,7 +19,7 @@ from rkgk.domain.models.paper_extraction import (
 )
 from rkgk.domain.repositories.paper import PaperRepositoryError
 from rkgk.domain.repositories.paper_extraction import PaperExtractionRepositoryError
-from rkgk.infrastructure.claude_extractor import ClaudeExtractor
+from rkgk.infrastructure.claude_code_agent import ClaudeCodeAgent
 from rkgk.infrastructure.file_paper_extraction_repository import FilePaperExtractionRepository
 from rkgk.infrastructure.file_paper_repository import FilePaperRepository
 from rkgk.usecase.extract_paper import ExtractPaperUseCase
@@ -65,7 +65,7 @@ def _run_run(args: argparse.Namespace) -> int:
     extraction_repository = FilePaperExtractionRepository(args.data_dir)
     use_case = ExtractPaperUseCase(
         FilePaperRepository(args.data_dir),
-        ClaudeExtractor(model=args.model),
+        ClaudeCodeAgent(model=args.model),
         extraction_repository,
         max_attempts=args.max_attempts,
     )
