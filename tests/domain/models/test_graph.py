@@ -226,7 +226,7 @@ def test_concept_relation_from_general_knowledge_rejects_a_blank_rationale() -> 
 
 
 def test_knowledge_graph_rejects_repeated_paper_ids() -> None:
-    with pytest.raises(ValidationError, match="paper_ids must not repeat"):
+    with pytest.raises(ValidationError, match="paper_ids declares 1 more than once"):
         build_graph(paper_ids=(1, 1))
 
 

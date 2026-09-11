@@ -130,9 +130,11 @@ class KnowledgeGraph(Entity):
     @model_validator(mode="after")
     def _check_references(self) -> Self:
         """Every edge must join declared nodes, and no node or edge may be declared twice."""
-        papers = set(self.paper_ids)
-        if len(papers) != len(self.paper_ids):
-            raise ValueError("paper_ids must not repeat")
+        papers: set[int] = set()
+        for paper_id in self.paper_ids:
+            if paper_id in papers:
+                raise ValueError(f"paper_ids declares {paper_id} more than once")
+            papers.add(paper_id)
 
         declared: set[str] = set()
         for concept in self.concepts:
