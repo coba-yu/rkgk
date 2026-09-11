@@ -24,7 +24,7 @@ from rkgk.infrastructure.file_paper_extraction_repository import FilePaperExtrac
 from rkgk.infrastructure.file_paper_repository import FilePaperRepository
 from rkgk.usecase.extract_paper import ExtractPaperUseCase
 from rkgk.usecase.save_extraction import SaveExtractionUseCase
-from rkgk.usecase.validate_extraction import ValidateExtractionUseCase
+from rkgk.usecase.validate_paper_extraction import ValidatePaperExtractionUseCase
 
 NAME = "extract"
 HELP = "describe, check, or store the extraction JSON an agent wrote for one paper"
@@ -95,7 +95,7 @@ def _run_run(args: argparse.Namespace) -> int:
 
 
 def _run_validate(args: argparse.Namespace) -> int:
-    use_case = ValidateExtractionUseCase(FilePaperRepository(args.data_dir))
+    use_case = ValidatePaperExtractionUseCase(FilePaperRepository(args.data_dir))
     return _run(args, use_case.execute, {})
 
 

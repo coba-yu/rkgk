@@ -26,7 +26,7 @@ def _build_issues(error: ValidationError) -> tuple[PaperExtractionIssue, ...]:
     return tuple(PaperExtractionIssue(path=_format_path(item["loc"]), message=item["msg"]) for item in error.errors())
 
 
-class ValidateExtractionUseCase:
+class ValidatePaperExtractionUseCase:
     def __init__(self, paper_repository: PaperRepository) -> None:
         self._paper_repository = paper_repository
 

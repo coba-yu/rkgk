@@ -3,12 +3,12 @@
 from rkgk.domain.models.paper_extraction import PaperExtraction
 from rkgk.domain.repositories.paper import PaperRepository
 from rkgk.domain.repositories.paper_extraction import PaperExtractionRepository
-from rkgk.usecase.validate_extraction import ValidateExtractionUseCase
+from rkgk.usecase.validate_paper_extraction import ValidatePaperExtractionUseCase
 
 
 class SaveExtractionUseCase:
     def __init__(self, paper_repository: PaperRepository, extraction_repository: PaperExtractionRepository) -> None:
-        self._validate = ValidateExtractionUseCase(paper_repository)
+        self._validate = ValidatePaperExtractionUseCase(paper_repository)
         self._extraction_repository = extraction_repository
 
     def execute(self, paper_id: int, payload: object) -> PaperExtraction:

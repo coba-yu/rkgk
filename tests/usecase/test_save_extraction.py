@@ -4,7 +4,7 @@ from rkgk.domain.models.paper_extraction import PaperExtractionValidationError
 from rkgk.domain.repositories.paper import PaperNotFoundError
 from rkgk.usecase.save_extraction import SaveExtractionUseCase
 from tests.usecase.fakes import FakePaperExtractionRepository, FakePaperRepository
-from tests.usecase.test_validate_extraction import PAPER, build_payload
+from tests.usecase.test_validate_paper_extraction import PAPER, build_payload
 
 
 def build_use_case(extraction_repository: FakePaperExtractionRepository) -> SaveExtractionUseCase:

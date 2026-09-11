@@ -5,7 +5,7 @@ import pytest
 
 from rkgk.domain.models.paper_extraction import PaperExtractionValidationError
 from rkgk.domain.repositories.paper import PaperNotFoundError
-from rkgk.usecase.validate_extraction import ValidateExtractionUseCase
+from rkgk.usecase.validate_paper_extraction import ValidatePaperExtractionUseCase
 from tests.usecase.fakes import FakePaperRepository, build_paper
 
 PAPER = build_paper(1, "We study a retrieval-augmented generation pipeline.\n", "The pipeline embeds chunks.\n")
@@ -31,8 +31,8 @@ def build_payload(**overrides: Any) -> dict[str, Any]:
     return payload
 
 
-def build_use_case() -> ValidateExtractionUseCase:
-    return ValidateExtractionUseCase(FakePaperRepository({1: PAPER}))
+def build_use_case() -> ValidatePaperExtractionUseCase:
+    return ValidatePaperExtractionUseCase(FakePaperRepository({1: PAPER}))
 
 
 def test_a_payload_backed_by_the_paper_is_returned_as_a_result() -> None:

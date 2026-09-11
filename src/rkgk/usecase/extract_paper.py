@@ -10,7 +10,7 @@ from rkgk.domain.models.paper_extraction import (
 )
 from rkgk.domain.repositories.paper import PaperRepository
 from rkgk.domain.repositories.paper_extraction import PaperExtractionRepository
-from rkgk.usecase.validate_extraction import ValidateExtractionUseCase
+from rkgk.usecase.validate_paper_extraction import ValidatePaperExtractionUseCase
 
 
 class ExtractPaperUseCase:
@@ -24,7 +24,7 @@ class ExtractPaperUseCase:
         self._paper_repository = paper_repository
         self._agent = agent
         self._extraction_repository = extraction_repository
-        self._validate = ValidateExtractionUseCase(paper_repository)
+        self._validate = ValidatePaperExtractionUseCase(paper_repository)
         self._max_attempts = max_attempts
 
     def execute(self, paper_id: int) -> PaperExtractionRun:
