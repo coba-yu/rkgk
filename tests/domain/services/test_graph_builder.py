@@ -199,7 +199,7 @@ def test_concept_relation_evidence_carries_the_chunk_id_of_the_resolved_evidence
 def test_a_relation_of_a_paper_keeps_origin_paper_and_the_paper_it_came_from() -> None:
     edge = build().concept_relations[0]
 
-    assert (edge.origin, edge.paper_id, edge.rationale) == (Origin.PAPER, 1, "")
+    assert (edge.origin, edge.paper_id, edge.rationale) == (Origin.PAPER, 1, None)
 
 
 def test_a_relation_of_general_knowledge_keeps_its_origin_and_rationale() -> None:
@@ -383,7 +383,7 @@ def test_to_networkx_keys_a_paper_origin_relation_by_relation_origin_and_paper()
         "origin": Origin.PAPER,
         "paper_id": 1,
         "evidence": (Evidence(page=3, quote="Graph RAG is meant to ground the answer", chunk_id="1:3"),),
-        "rationale": "",
+        "rationale": None,
     }
 
 

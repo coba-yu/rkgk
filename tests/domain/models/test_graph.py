@@ -192,7 +192,7 @@ def build_graph(
 
 
 def test_concept_relation_from_paper_rejects_a_rationale() -> None:
-    with pytest.raises(ValidationError, match="rationale must be empty when origin is paper"):
+    with pytest.raises(ValidationError, match="rationale must be None when origin is paper"):
         ConceptEdge(
             source_id="graph-rag",
             target_id="rag",
@@ -201,6 +201,16 @@ def test_concept_relation_from_paper_rejects_a_rationale() -> None:
             paper_id=1,
             evidence=[EVIDENCE],
             rationale="Graph RAG は RAG の一種である。",
+        )
+
+
+def test_concept_relation_from_general_knowledge_requires_a_rationale() -> None:
+    with pytest.raises(ValidationError, match="rationale is required when origin is general_knowledge"):
+        ConceptEdge(
+            source_id="graph-rag",
+            target_id="rag",
+            relation=ConceptRelationType.IS_A,
+            origin=Origin.GENERAL_KNOWLEDGE,
         )
 
 

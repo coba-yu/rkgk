@@ -81,7 +81,7 @@ class ConceptEdge(Entity):
     origin: Origin
     paper_id: int | None = Field(default=None, ge=1)
     evidence: tuple[Evidence, ...] = ()
-    rationale: str = ""
+    rationale: str | None = None
 
     @model_validator(mode="after")
     def _check_origin_consistency(self) -> Self:
@@ -97,13 +97,15 @@ class ConceptEdge(Entity):
                 raise ValueError(f"paper_id is required when origin is {self.origin.value}")
             if not self.evidence:
                 raise ValueError(f"evidence must not be empty when origin is {self.origin.value}")
-            if self.rationale:
-                raise ValueError(f"rationale must be empty when origin is {self.origin.value}")
+            if self.rationale is not None:
+                raise ValueError(f"rationale must be None when origin is {self.origin.value}")
         else:
             if self.paper_id is not None:
                 raise ValueError(f"paper_id must be None when origin is {self.origin.value}")
             if self.evidence:
                 raise ValueError(f"evidence must be empty when origin is {self.origin.value}")
+            if self.rationale is None:
+                raise ValueError(f"rationale is required when origin is {self.origin.value}")
             if not self.rationale.strip():
                 raise ValueError(
                     f"rationale must contain non-whitespace characters when origin is {self.origin.value}"
