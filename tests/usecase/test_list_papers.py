@@ -1,7 +1,7 @@
 import pytest
 
-from rkgk.domain.paper import Paper, PaperIndexEntry
-from rkgk.domain.repositories import PaperNotFoundError, PaperRepositoryError
+from rkgk.domain.models.paper import Paper, PaperIndexEntry
+from rkgk.domain.repositories.paper import PaperNotFoundError, PaperRepositoryError
 from rkgk.usecase.list_papers import ListPapersUseCase
 
 ENTRIES = (

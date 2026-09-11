@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from rkgk.domain.vocabulary import (
+from rkgk.domain.models.vocabulary import (
     ConceptRelationType,
     ConceptType,
     Origin,

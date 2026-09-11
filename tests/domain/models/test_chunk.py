@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from rkgk.domain.chunk import Chunk
+from rkgk.domain.models.chunk import Chunk
 
 
 def test_chunk_make_builds_the_id() -> None:

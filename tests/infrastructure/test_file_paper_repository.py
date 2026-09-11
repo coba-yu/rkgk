@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from rkgk.domain.paper import MarkerKind
-from rkgk.domain.repositories import (
+from rkgk.domain.models.paper import MarkerKind
+from rkgk.domain.repositories.paper import (
     PaperArtifactInvalidError,
     PaperArtifactUnreadableError,
     PaperNotFoundError,

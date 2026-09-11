@@ -11,7 +11,7 @@ from datetime import datetime
 
 from pydantic import Field
 
-from rkgk.domain.base import Entity
+from rkgk.domain.models.base import Entity
 
 
 def build_paper_dir_name(paper_id: int) -> str:

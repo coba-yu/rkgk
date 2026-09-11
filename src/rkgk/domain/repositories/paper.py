@@ -1,25 +1,19 @@
-"""Ports that the domain needs from the outside world.
-
-The domain states what it wants to read, not where the bytes live, so an implementation may back these calls
-with files, S3, or a database without the use cases noticing.
-"""
+"""Port that the domain needs to read papers from the outside world."""
 
 from typing import Protocol
 
-from rkgk.domain.paper import Paper, PaperIndexEntry
+from rkgk.domain.models.paper import Paper, PaperIndexEntry
+from rkgk.domain.repositories.base import RepositoryError
 
 
-class PaperRepositoryError(Exception):
-    """Base of every failure a repository reports.
+class PaperRepositoryError(RepositoryError):
+    """Base of every failure the paper repository reports.
 
-    Subclasses tell the caller what kind of failure it is, not which step of an implementation hit it,
-    so a file-backed and an S3-backed repository raise the same classes.
-    `location` and `paper_id` are attributes so a caller can render them without parsing the message.
+    `paper_id` is an attribute so a caller can render which paper failed without parsing the message.
     """
 
     def __init__(self, message: str, *, location: str | None = None, paper_id: int | None = None) -> None:
-        super().__init__(message)
-        self.location = location
+        super().__init__(message, location=location)
         self.paper_id = paper_id
 
 

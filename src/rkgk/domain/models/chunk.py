@@ -4,7 +4,7 @@ from typing import Self
 
 from pydantic import Field, field_validator, model_validator
 
-from rkgk.domain.base import Entity
+from rkgk.domain.models.base import Entity
 
 
 class Chunk(Entity):

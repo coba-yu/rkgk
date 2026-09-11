@@ -1,7 +1,7 @@
 """Use case that lists the papers known to the repository."""
 
-from rkgk.domain.paper import PaperIndexEntry
-from rkgk.domain.repositories import PaperRepository
+from rkgk.domain.models.paper import PaperIndexEntry
+from rkgk.domain.repositories.paper import PaperRepository
 
 
 class ListPapersUseCase:
