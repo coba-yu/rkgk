@@ -112,3 +112,9 @@ def test_an_unknown_paper_is_reported_before_the_agent_is_asked() -> None:
     with pytest.raises(PaperNotFoundError, match="paper 1"):
         use_case.execute(1)
     assert agent.prompts == []
+
+
+@pytest.mark.parametrize("max_attempts", [0, -1])
+def test_fewer_than_one_attempt_is_rejected_before_anything_runs(max_attempts: int) -> None:
+    with pytest.raises(ValueError, match="max_attempts must be at least 1"):
+        build_use_case(FakeAgent(VALID), FakePaperExtractionRepository(), max_attempts=max_attempts)

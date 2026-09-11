@@ -91,8 +91,15 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("paper_id", type=int)
     parser.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR)
     parser.add_argument("--model", default=None, help="model passed to the Claude CLI; its default is used when unset")
-    parser.add_argument("--max-attempts", type=int, default=DEFAULT_MAX_ATTEMPTS)
+    parser.add_argument("--max-attempts", type=_positive_int, default=DEFAULT_MAX_ATTEMPTS)
     return parser
+
+
+def _positive_int(text: str) -> int:
+    value = int(text)
+    if value < 1:
+        raise argparse.ArgumentTypeError(f"must be at least 1, got {value}")
+    return value
 
 
 def main(argv: list[str] | None = None) -> int:

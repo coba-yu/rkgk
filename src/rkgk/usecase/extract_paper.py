@@ -25,6 +25,8 @@ class ExtractPaperUseCase:
         self._agent = agent
         self._extraction_repository = extraction_repository
         self._validate = ValidatePaperExtractionUseCase(paper_repository)
+        if max_attempts < 1:
+            raise ValueError(f"max_attempts must be at least 1, got {max_attempts}")
         self._max_attempts = max_attempts
 
     def execute(self, paper_id: int) -> PaperExtractionRun:

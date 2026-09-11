@@ -173,3 +173,13 @@ def test_help_mentions_the_paper_id(capsys: pytest.CaptureFixture[str]) -> None:
         main(["--help"])
     assert caught.value.code == 0
     assert "paper_id" in capsys.readouterr().out
+
+
+@pytest.mark.parametrize("max_attempts", ["0", "-1"])
+def test_fewer_than_one_attempt_is_a_usage_error(
+    max_attempts: str, capsys: pytest.CaptureFixture[str], tmp_path: Path
+) -> None:
+    with pytest.raises(SystemExit) as caught:
+        main(["1", "--data-dir", str(tmp_path), "--max-attempts", max_attempts])
+    assert caught.value.code == 2
+    assert "must be at least 1" in capsys.readouterr().err
