@@ -28,7 +28,7 @@ def _fail(
     return kind(f"paper {paper_id}: {path}: {problem}", location=str(path), paper_id=paper_id)
 
 
-class FileExtractionRepository:
+class FilePaperExtractionRepository:
     def __init__(self, data_dir: Path) -> None:
         self._papers_dir = data_dir / PAPERS_DIR_NAME
 
