@@ -18,7 +18,7 @@ LOCAL_CONCEPT_ID_PATTERN = r"^c[1-9][0-9]*$"
 LocalConceptId = Annotated[str, Field(pattern=LOCAL_CONCEPT_ID_PATTERN)]
 
 
-class ExtractedEvidence(Entity):
+class PageEvidence(Entity):
     """A quote from one page; chunk ids do not exist yet at extraction time, so evidence points at a page."""
 
     page: int = Field(ge=1)
@@ -43,7 +43,7 @@ class ExtractedConcept(Entity):
 class ExtractedPaperConceptEdge(Entity):
     concept_id: LocalConceptId
     relation: PaperConceptRelation
-    evidence: tuple[ExtractedEvidence, ...] = Field(min_length=1)
+    evidence: tuple[PageEvidence, ...] = Field(min_length=1)
 
 
 class ExtractedConceptEdge(Entity):
@@ -52,7 +52,7 @@ class ExtractedConceptEdge(Entity):
     source_id: LocalConceptId
     target_id: LocalConceptId
     relation: ConceptRelationType
-    evidence: tuple[ExtractedEvidence, ...] = Field(min_length=1)
+    evidence: tuple[PageEvidence, ...] = Field(min_length=1)
 
     @model_validator(mode="after")
     def _reject_self_relation(self) -> Self:

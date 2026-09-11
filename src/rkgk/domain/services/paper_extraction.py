@@ -6,7 +6,7 @@ This module reads the extraction and paper models but owns no data of its own.
 import re
 
 from rkgk.domain.models.paper import Paper
-from rkgk.domain.models.paper_extraction import ExtractedEvidence, PaperExtraction, PaperExtractionIssue
+from rkgk.domain.models.paper_extraction import PageEvidence, PaperExtraction, PaperExtractionIssue
 
 _WHITESPACE_RUN = re.compile(r"\s+")
 
@@ -21,7 +21,7 @@ def normalize_whitespace(text: str) -> str:
 
 
 def _check_evidence(
-    evidence: tuple[ExtractedEvidence, ...], prefix: str, page_texts: dict[int, str], page_count: int
+    evidence: tuple[PageEvidence, ...], prefix: str, page_texts: dict[int, str], page_count: int
 ) -> list[PaperExtractionIssue]:
     issues: list[PaperExtractionIssue] = []
     for index, item in enumerate(evidence):

@@ -8,8 +8,8 @@ from rkgk.domain.models.paper_extraction import (
     LOCAL_CONCEPT_ID_PATTERN,
     ExtractedConcept,
     ExtractedConceptEdge,
-    ExtractedEvidence,
     ExtractedPaperConceptEdge,
+    PageEvidence,
     PaperExtraction,
     build_paper_extraction_schema,
 )
@@ -21,8 +21,8 @@ CONCEPTS = (
 )
 
 
-def evidence(page: int = 1, quote: str = "retrieval-augmented") -> tuple[ExtractedEvidence, ...]:
-    return (ExtractedEvidence(page=page, quote=quote),)
+def evidence(page: int = 1, quote: str = "retrieval-augmented") -> tuple[PageEvidence, ...]:
+    return (PageEvidence(page=page, quote=quote),)
 
 
 def build_result(**overrides: object) -> PaperExtraction:
@@ -115,7 +115,7 @@ def test_an_edge_without_evidence_is_rejected() -> None:
 @pytest.mark.parametrize("quote", ["", "   \n "])
 def test_a_blank_quote_is_rejected(quote: str) -> None:
     with pytest.raises(ValidationError):
-        ExtractedEvidence(page=1, quote=quote)
+        PageEvidence(page=1, quote=quote)
 
 
 def test_a_blank_summary_is_rejected() -> None:
