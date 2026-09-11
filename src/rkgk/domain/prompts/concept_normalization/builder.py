@@ -30,6 +30,17 @@ def _describe_concepts(extraction: PaperExtraction) -> list[str]:
     return lines
 
 
+# The second sentence spells out the line format `_describe_concepts` writes, so the two sit in one module and
+# cannot be changed apart.
+_PAPERS_HEADING = (
+    "# Papers",
+    "",
+    "論文ごとに個別に抽出したので、`c1`、`c2`、... はそれが記載されている論文の中でのみ通用する。",
+    "概念の行は `- local id | name | type | aliases: ... | description` という形式で、論文が aliases や "
+    "description を報告していない場合は途中で終わる。",
+)
+
+
 def build_concept_normalization_prompt(
     extractions: tuple[PaperExtraction, ...],
     previous: object | None = None,
@@ -47,7 +58,7 @@ def build_concept_normalization_prompt(
         "",
         _read(_DIR / "rules.md"),
         "",
-        _read(_DIR / "papers.md"),
+        *_PAPERS_HEADING,
     ]
     # Tagged like the pages of the extraction prompt, so a paper's concepts are bounded rather than running
     # until the next heading.
