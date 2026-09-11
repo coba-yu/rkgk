@@ -59,8 +59,11 @@ class ClaudeCodeAgent:
             "json",
             "--json-schema",
             json.dumps(schema),
-            "--allowedTools",
+            # The paper text travels inside the prompt, so the model needs no tool; disabling them all also keeps
+            # instructions hidden in a paper from reaching the file system through Read, Bash or an MCP server.
+            "--tools",
             "",
+            "--strict-mcp-config",
             "--max-turns",
             MAX_TURNS,
         ]

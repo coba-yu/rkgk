@@ -53,7 +53,10 @@ def test_the_command_asks_for_json_output_against_the_schema(monkeypatch: pytest
     monkeypatch.setattr(subprocess, "run", _fake_run)
     ClaudeCodeAgent().answer("prompt", SCHEMA)
     assert seen[0][:6] == ["claude", "-p", "--output-format", "json", "--json-schema", json.dumps(SCHEMA)]
-    assert "--allowedTools" in seen[0]
+    tools_flag = seen[0].index("--tools")
+    assert seen[0][tools_flag + 1] == ""
+    assert "--strict-mcp-config" in seen[0]
+    assert "--allowedTools" not in seen[0]
     assert "--model" not in seen[0]
 
 
