@@ -2,6 +2,7 @@
 
 from pydantic import ValidationError
 
+from rkgk.domain.models.base import format_error_path
 from rkgk.domain.models.paper_extraction import (
     PaperExtraction,
     PaperExtractionIssue,
@@ -11,19 +12,10 @@ from rkgk.domain.models.paper_extraction import (
 from rkgk.domain.repositories.paper import PaperRepository
 
 
-def _format_path(location: tuple[int | str, ...]) -> str:
-    """Render a pydantic error location the way the agent reads its own JSON: `paper_concepts[2].evidence[0].quote`."""
-    parts: list[str] = []
-    for item in location:
-        if isinstance(item, int):
-            parts.append(f"[{item}]")
-        else:
-            parts.append(f".{item}" if parts else item)
-    return "".join(parts) or "<root>"
-
-
 def _build_issues(error: ValidationError) -> tuple[PaperExtractionIssue, ...]:
-    return tuple(PaperExtractionIssue(path=_format_path(item["loc"]), message=item["msg"]) for item in error.errors())
+    return tuple(
+        PaperExtractionIssue(path=format_error_path(item["loc"]), message=item["msg"]) for item in error.errors()
+    )
 
 
 class ValidatePaperExtractionUseCase:

@@ -5,8 +5,22 @@ so an index built with an older model can be detected and rebuilt.
 """
 
 from rkgk.domain.agents import StructuredOutputAgent, StructuredOutputAgentError
-from rkgk.domain.models.base import SLUG_PATTERN, Entity, Slug
+from rkgk.domain.models.base import SLUG_PATTERN, Entity, Slug, format_error_path
 from rkgk.domain.models.chunk import Chunk
+from rkgk.domain.models.concept_normalization import (
+    CONCEPT_NORMALIZATION_SCHEMA_VERSION,
+    ConceptNormalization,
+    ConceptNormalizationIssue,
+    ConceptNormalizationRun,
+    ConceptNormalizationValidationError,
+    GeneralKnowledgeEdge,
+    LocalConceptRef,
+    MissingPaperExtractionsError,
+    NormalizedConcept,
+    build_concept_normalization_prompt,
+    build_concept_normalization_schema,
+    check_normalization_against_extractions,
+)
 from rkgk.domain.models.graph import Concept, ConceptEdge, Evidence, PaperConceptEdge
 from rkgk.domain.models.paper import (
     MARKER_PATTERN,
@@ -51,6 +65,13 @@ from rkgk.domain.models.vocabulary import (
     traversable_concept_types,
     traversable_paper_relations,
 )
+from rkgk.domain.repositories.concept_normalization import (
+    ConceptNormalizationArtifactInvalidError,
+    ConceptNormalizationArtifactUnreadableError,
+    ConceptNormalizationNotFoundError,
+    ConceptNormalizationRepository,
+    ConceptNormalizationRepositoryError,
+)
 from rkgk.domain.repositories.paper import (
     PaperArtifactInvalidError,
     PaperArtifactUnreadableError,
@@ -69,6 +90,7 @@ from rkgk.domain.repositories.paper_extraction import (
 DOMAIN_MODEL_VERSION = 1
 
 __all__ = [
+    "CONCEPT_NORMALIZATION_SCHEMA_VERSION",
     "DOMAIN_MODEL_VERSION",
     "EXTRACTION_SCHEMA_VERSION",
     "LOCAL_CONCEPT_ID_PATTERN",
@@ -77,6 +99,15 @@ __all__ = [
     "Chunk",
     "Concept",
     "ConceptEdge",
+    "ConceptNormalization",
+    "ConceptNormalizationArtifactInvalidError",
+    "ConceptNormalizationArtifactUnreadableError",
+    "ConceptNormalizationIssue",
+    "ConceptNormalizationNotFoundError",
+    "ConceptNormalizationRepository",
+    "ConceptNormalizationRepositoryError",
+    "ConceptNormalizationRun",
+    "ConceptNormalizationValidationError",
     "ConceptRelationSpec",
     "ConceptRelationType",
     "ConceptType",
@@ -87,8 +118,12 @@ __all__ = [
     "ExtractedConceptEdge",
     "ExtractedEvidence",
     "ExtractedPaperConceptEdge",
+    "GeneralKnowledgeEdge",
     "LocalConceptId",
+    "LocalConceptRef",
     "MarkerKind",
+    "MissingPaperExtractionsError",
+    "NormalizedConcept",
     "Origin",
     "OriginSpec",
     "Page",
@@ -117,11 +152,15 @@ __all__ = [
     "Slug",
     "StructuredOutputAgent",
     "StructuredOutputAgentError",
+    "build_concept_normalization_prompt",
+    "build_concept_normalization_schema",
     "build_paper_dir_name",
     "build_paper_extraction_prompt",
     "build_paper_extraction_schema",
     "check_extraction_against_paper",
+    "check_normalization_against_extractions",
     "describe_vocabulary",
+    "format_error_path",
     "normalize_whitespace",
     "parse_page",
     "traversable_concept_relations",
