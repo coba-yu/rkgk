@@ -66,8 +66,16 @@ class FilePaperExtractionRepository:
         except json.JSONDecodeError as error:
             raise _fail(PaperExtractionArtifactInvalidError, path, f"is not valid JSON: {error}", paper_id) from error
         try:
-            return PaperExtraction.model_validate(payload)
+            extraction = PaperExtraction.model_validate(payload)
         except ValidationError as error:
             raise _fail(
                 PaperExtractionArtifactInvalidError, path, f"is not a valid PaperExtraction: {error}", paper_id
             ) from error
+        if extraction.paper_id != paper_id:
+            raise _fail(
+                PaperExtractionArtifactInvalidError,
+                path,
+                f"declares paper_id {extraction.paper_id}, which does not match the requested id {paper_id}",
+                paper_id,
+            )
+        return extraction

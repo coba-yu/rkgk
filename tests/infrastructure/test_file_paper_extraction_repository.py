@@ -91,3 +91,12 @@ def test_errors_carry_the_location_as_an_attribute(tmp_path: Path) -> None:
     with pytest.raises(PaperExtractionRepositoryError) as caught:
         FilePaperExtractionRepository(tmp_path).find(1)
     assert caught.value.location == str(tmp_path / "papers" / "0001" / "extraction.json")
+
+
+def test_an_extraction_that_declares_another_paper_is_reported_as_invalid(tmp_path: Path) -> None:
+    repository = FilePaperExtractionRepository(tmp_path)
+    misplaced = RESULT.model_copy(update={"paper_id": 2})
+    repository.path_for(1).parent.mkdir(parents=True, exist_ok=True)
+    repository.path_for(1).write_text(misplaced.model_dump_json(indent=2) + "\n", encoding="utf-8")
+    with pytest.raises(PaperExtractionArtifactInvalidError, match="declares paper_id 2, which does not match"):
+        repository.find(1)
