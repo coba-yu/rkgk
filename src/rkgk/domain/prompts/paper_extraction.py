@@ -11,29 +11,25 @@ from rkgk.domain.models.paper_extraction import EXTRACTION_SCHEMA_VERSION, Paper
 from rkgk.domain.models.vocabulary import describe_vocabulary
 
 _RULES = (
-    "Report only concepts that appear in the paper text; never add a concept from general knowledge.",
-    "Write `name` as the English canonical name of the concept, and put abbreviations and spelling variants "
-    "in `aliases`.",
-    "Use `proposes` for a concept the paper introduces as its own contribution and `uses` for one it applies "
-    "in its method or experiments.",
-    "Use `addresses` for a problem the paper tries to solve and `mentions` when the paper only refers to the "
-    "concept; the line between `mentions` and `uses` is whether the paper actually works with the concept.",
-    "Copy every `quote` verbatim from the paper text; never summarize or paraphrase it.",
-    "Set every `page` to the page the quote is printed on.",
-    "Add a concept-to-concept relation only when the paper text backs it, and leave `concept_relations` empty "
-    "otherwise.",
-    "Write `summary_ja` in Japanese, between 200 and 400 characters, covering the problem, the method, and "
-    "the results.",
+    "論文本文に現れる概念だけを報告する。一般知識から概念を追加しない。",
+    "`name` には概念の英語の正式名称を書き、略語や表記ゆれは `aliases` に入れる。",
+    "論文が自身の貢献として導入する概念には `proposes` を使い、論文が手法または実験で適用する概念には `uses` を使う。",
+    "論文が解こうとしている課題には `addresses` を使い、論文がその概念に言及しているだけのときは "
+    "`mentions` を使う。`mentions` と `uses` の境目は、論文がその概念を実際に扱っているかどうかである。",
+    "すべての `quote` は論文本文から一字一句そのまま写す。要約も言い換えもしない。",
+    "すべての `page` には、その引用が印刷されているページを設定する。",
+    "概念どうしの関係は論文本文が裏付けるときにだけ追加し、裏付けがなければ `concept_relations` は空のままにする。",
+    "`summary_ja` は日本語で 200 文字以上 400 文字以下で書き、課題、手法、結果を含める。",
 )
 
 
 def _identifier_rules(paper_id: int) -> tuple[str, ...]:
     return (
-        "Give every concept a local id `c1`, `c2`, ... in declaration order.",
-        "Refer to those local ids only; `paper_concepts` and `concept_relations` may use no other id.",
-        "Never invent a global id or a slug, because normalization assigns them after this step.",
-        f"Set `paper_id` to {paper_id}.",
-        f"Set `schema_version` to {EXTRACTION_SCHEMA_VERSION}.",
+        "すべての概念に、宣言した順で `c1`、`c2`、... というローカル id を付ける。",
+        "参照するのはそれらのローカル id だけにする。`paper_concepts` と `concept_relations` では他の id を使わない。",
+        "グローバル id や slug を作り出さない。この工程の後で正規化がそれらを割り当てるためである。",
+        f"`paper_id` に {paper_id} を設定する。",
+        f"`schema_version` に {EXTRACTION_SCHEMA_VERSION} を設定する。",
     )
 
 
@@ -48,10 +44,9 @@ def build_paper_extraction_prompt(
     lines = [
         "# Task",
         "",
-        "You extract the knowledge graph of one research paper.",
-        "Read the paper below and report the concepts it contains, how the paper relates to them, and how they "
-        "relate to each other.",
-        "Answer with a single JSON object that follows the JSON Schema you were given.",
+        "1 本の研究論文の知識グラフを抽出する。",
+        "以下の論文を読み、そこに含まれる概念、論文とそれらの概念の関係、および概念どうしの関係を報告する。",
+        "与えられた JSON Schema に従う単一の JSON オブジェクトで回答する。",
         "",
         "## Rules",
         "",
@@ -59,7 +54,7 @@ def build_paper_extraction_prompt(
         "",
         "## Vocabulary",
         "",
-        "Use these node types and relation names, spelled exactly as shown.",
+        "ノード種別と関係名は以下のものを使い、表記は示したとおりにする。",
         "",
         describe_vocabulary().rstrip("\n"),
         "",
@@ -80,7 +75,7 @@ def build_paper_extraction_prompt(
             "",
             "## Previous attempt",
             "",
-            "This JSON was rejected.",
+            "この JSON は却下された。",
             "",
             "```json",
             json.dumps(previous, ensure_ascii=False, indent=2),
@@ -90,7 +85,7 @@ def build_paper_extraction_prompt(
             "",
             *(f"- {issue.path}: {issue.message}" for issue in issues),
             "",
-            "Return a complete corrected JSON object that fixes every issue above.",
+            "上記のすべての問題を修正した、完全な JSON オブジェクトを返す。",
         ]
-    lines += ["", "Return only the JSON object."]
+    lines += ["", "JSON オブジェクトだけを返す。"]
     return "\n".join(lines) + "\n"

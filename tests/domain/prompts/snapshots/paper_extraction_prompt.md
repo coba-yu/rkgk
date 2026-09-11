@@ -1,56 +1,56 @@
 # Task
 
-You extract the knowledge graph of one research paper.
-Read the paper below and report the concepts it contains, how the paper relates to them, and how they relate to each other.
-Answer with a single JSON object that follows the JSON Schema you were given.
+1 本の研究論文の知識グラフを抽出する。
+以下の論文を読み、そこに含まれる概念、論文とそれらの概念の関係、および概念どうしの関係を報告する。
+与えられた JSON Schema に従う単一の JSON オブジェクトで回答する。
 
 ## Rules
 
-- Report only concepts that appear in the paper text; never add a concept from general knowledge.
-- Write `name` as the English canonical name of the concept, and put abbreviations and spelling variants in `aliases`.
-- Use `proposes` for a concept the paper introduces as its own contribution and `uses` for one it applies in its method or experiments.
-- Use `addresses` for a problem the paper tries to solve and `mentions` when the paper only refers to the concept; the line between `mentions` and `uses` is whether the paper actually works with the concept.
-- Copy every `quote` verbatim from the paper text; never summarize or paraphrase it.
-- Set every `page` to the page the quote is printed on.
-- Add a concept-to-concept relation only when the paper text backs it, and leave `concept_relations` empty otherwise.
-- Write `summary_ja` in Japanese, between 200 and 400 characters, covering the problem, the method, and the results.
+- 論文本文に現れる概念だけを報告する。一般知識から概念を追加しない。
+- `name` には概念の英語の正式名称を書き、略語や表記ゆれは `aliases` に入れる。
+- 論文が自身の貢献として導入する概念には `proposes` を使い、論文が手法または実験で適用する概念には `uses` を使う。
+- 論文が解こうとしている課題には `addresses` を使い、論文がその概念に言及しているだけのときは `mentions` を使う。`mentions` と `uses` の境目は、論文がその概念を実際に扱っているかどうかである。
+- すべての `quote` は論文本文から一字一句そのまま写す。要約も言い換えもしない。
+- すべての `page` には、その引用が印刷されているページを設定する。
+- 概念どうしの関係は論文本文が裏付けるときにだけ追加し、裏付けがなければ `concept_relations` は空のままにする。
+- `summary_ja` は日本語で 200 文字以上 400 文字以下で書き、課題、手法、結果を含める。
 
 ## Vocabulary
 
-Use these node types and relation names, spelled exactly as shown.
+ノード種別と関係名は以下のものを使い、表記は示したとおりにする。
 
 ## ConceptType
 
-- `problem`: A task, limitation, or research question a paper addresses
-- `method`: A technique, model, algorithm, or component used or proposed
-- `keyword`: A term that is neither a problem nor a method; kept for display and explanation only (not used for traversal)
+- `problem`: 論文が取り組む課題、制約、または研究上の問い
+- `method`: 使用または提案される技術、モデル、アルゴリズム、または構成要素
+- `keyword`: problem でも method でもない用語。表示と説明のためだけに保持する (探索には使わない)
 
 ## PaperConceptRelation
 
-- `proposes`: The paper introduces the concept as its own contribution
-- `uses`: The paper applies the concept in its method or experiments
-- `addresses`: The paper targets the concept as a problem it tries to solve
-- `mentions`: The paper refers to the concept without using or proposing it (not used for traversal)
+- `proposes`: 論文がその概念を自身の貢献として導入する
+- `uses`: 論文がその概念を手法または実験で適用する
+- `addresses`: 論文がその概念を、解こうとしている課題として扱う
+- `mentions`: 論文がその概念に言及するだけで、使用も提案もしていない (探索には使わない)
 
 ## ConceptRelationType
 
-- `is_a`: source is a kind of target (direction: source -> target)
-- `part_of`: source is a component of target (direction: source -> target)
-- `used_for`: source is used for the problem or purpose target (direction: source -> target)
-- `related_to`: source and target are related in a way the other relations cannot express; use sparingly (direction: source -> target)
+- `is_a`: source は target の一種 (方向: source -> target)
+- `part_of`: source は target の構成要素 (方向: source -> target)
+- `used_for`: source は課題または目的である target のために使われる (方向: source -> target)
+- `related_to`: source と target が、他の関係では表現できない形で関連する。多用しない (方向: source -> target)
 
 ## Origin
 
-- `paper`: Extracted from the paper text with quoted evidence (requires evidence)
-- `general_knowledge`: Added from general knowledge during normalization; unverified against any paper (no evidence)
+- `paper`: 論文本文から、引用による根拠付きで抽出した (evidence が必須)
+- `general_knowledge`: 正規化のときに一般知識から追加した。どの論文とも照合していない (evidence なし)
 
 ## Identifiers
 
-- Give every concept a local id `c1`, `c2`, ... in declaration order.
-- Refer to those local ids only; `paper_concepts` and `concept_relations` may use no other id.
-- Never invent a global id or a slug, because normalization assigns them after this step.
-- Set `paper_id` to 1.
-- Set `schema_version` to 1.
+- すべての概念に、宣言した順で `c1`、`c2`、... というローカル id を付ける。
+- 参照するのはそれらのローカル id だけにする。`paper_concepts` と `concept_relations` では他の id を使わない。
+- グローバル id や slug を作り出さない。この工程の後で正規化がそれらを割り当てるためである。
+- `paper_id` に 1 を設定する。
+- `schema_version` に 1 を設定する。
 
 ## Paper
 
@@ -88,4 +88,4 @@ Equation (1) mixes the chunk similarity with a graph score, and alpha controls h
 
 [1] Ada Lovelace. Notes on the Analytical Engine. 1843.
 
-Return only the JSON object.
+JSON オブジェクトだけを返す。

@@ -54,7 +54,7 @@ def test_the_prompt_is_deterministic() -> None:
 def test_the_prompt_carries_the_vocabulary_and_the_schema_version() -> None:
     prompt = build_concept_normalization_prompt(EXTRACTIONS)
     assert describe_vocabulary().rstrip("\n") in prompt
-    assert f"Set `schema_version` to {CONCEPT_NORMALIZATION_SCHEMA_VERSION}." in prompt
+    assert f"`schema_version` に {CONCEPT_NORMALIZATION_SCHEMA_VERSION} を設定する。" in prompt
 
 
 def test_the_prompt_lists_every_paper_with_its_concepts_aliases_and_description() -> None:
@@ -69,7 +69,7 @@ def test_the_prompt_lists_every_paper_with_its_concepts_aliases_and_description(
 
 
 def test_the_prompt_ends_by_asking_for_the_json_alone() -> None:
-    assert build_concept_normalization_prompt(EXTRACTIONS).endswith("Return only the JSON object.\n")
+    assert build_concept_normalization_prompt(EXTRACTIONS).endswith("JSON オブジェクトだけを返す。\n")
 
 
 def test_a_first_attempt_mentions_neither_a_previous_answer_nor_issues() -> None:
@@ -84,4 +84,4 @@ def test_a_retry_repeats_the_rejected_json_and_the_issues() -> None:
     prompt = build_concept_normalization_prompt(EXTRACTIONS, previous, issues)
     assert '"schema_version": 1' in prompt
     assert "- concepts: paper 2 'c2' is in no merged_from" in prompt
-    assert "Return a complete corrected JSON object that fixes every issue above." in prompt
+    assert "上記のすべての問題を修正した、完全な JSON オブジェクトを返す。" in prompt

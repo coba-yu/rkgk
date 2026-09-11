@@ -32,8 +32,8 @@ def test_the_prompt_is_deterministic() -> None:
 def test_the_prompt_carries_the_vocabulary_and_the_paper_id() -> None:
     prompt = build_paper_extraction_prompt(load_fixture_paper())
     assert describe_vocabulary().rstrip("\n") in prompt
-    assert "Set `paper_id` to 1." in prompt
-    assert f"Set `schema_version` to {EXTRACTION_SCHEMA_VERSION}." in prompt
+    assert "`paper_id` に 1 を設定する。" in prompt
+    assert f"`schema_version` に {EXTRACTION_SCHEMA_VERSION} を設定する。" in prompt
 
 
 def test_the_prompt_holds_every_page_with_its_number_and_text() -> None:
@@ -44,7 +44,7 @@ def test_the_prompt_holds_every_page_with_its_number_and_text() -> None:
 
 
 def test_the_prompt_ends_by_asking_for_the_json_alone() -> None:
-    assert build_paper_extraction_prompt(load_fixture_paper()).endswith("Return only the JSON object.\n")
+    assert build_paper_extraction_prompt(load_fixture_paper()).endswith("JSON オブジェクトだけを返す。\n")
 
 
 def test_a_first_attempt_mentions_neither_a_previous_answer_nor_issues() -> None:
@@ -59,4 +59,4 @@ def test_a_retry_repeats_the_rejected_json_and_the_issues() -> None:
     prompt = build_paper_extraction_prompt(load_fixture_paper(), previous, issues)
     assert '"summary_ja": "要約"' in prompt
     assert "- paper_concepts[0].evidence[0].quote: is not found on page 1" in prompt
-    assert "Return a complete corrected JSON object that fixes every issue above." in prompt
+    assert "上記のすべての問題を修正した、完全な JSON オブジェクトを返す。" in prompt

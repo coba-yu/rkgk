@@ -45,11 +45,9 @@ class ConceptType(enum.StrEnum):
 
 # Keyword is not traversable because generic terms link unrelated papers and would drown the graph in noise.
 _CONCEPT_TYPE_SPECS: dict[ConceptType, ConceptTypeSpec] = {
-    ConceptType.PROBLEM: ConceptTypeSpec("A task, limitation, or research question a paper addresses", True),
-    ConceptType.METHOD: ConceptTypeSpec("A technique, model, algorithm, or component used or proposed", True),
-    ConceptType.KEYWORD: ConceptTypeSpec(
-        "A term that is neither a problem nor a method; kept for display and explanation only", False
-    ),
+    ConceptType.PROBLEM: ConceptTypeSpec("論文が取り組む課題、制約、または研究上の問い", True),
+    ConceptType.METHOD: ConceptTypeSpec("使用または提案される技術、モデル、アルゴリズム、または構成要素", True),
+    ConceptType.KEYWORD: ConceptTypeSpec("problem でも method でもない用語。表示と説明のためだけに保持する", False),
 }
 
 
@@ -66,12 +64,10 @@ class PaperConceptRelation(enum.StrEnum):
 
 # Mentions is not traversable because a passing reference is no evidence that the paper is about the concept.
 _PAPER_CONCEPT_RELATION_SPECS: dict[PaperConceptRelation, RelationSpec] = {
-    PaperConceptRelation.PROPOSES: RelationSpec("The paper introduces the concept as its own contribution", True),
-    PaperConceptRelation.USES: RelationSpec("The paper applies the concept in its method or experiments", True),
-    PaperConceptRelation.ADDRESSES: RelationSpec("The paper targets the concept as a problem it tries to solve", True),
-    PaperConceptRelation.MENTIONS: RelationSpec(
-        "The paper refers to the concept without using or proposing it", False
-    ),
+    PaperConceptRelation.PROPOSES: RelationSpec("論文がその概念を自身の貢献として導入する", True),
+    PaperConceptRelation.USES: RelationSpec("論文がその概念を手法または実験で適用する", True),
+    PaperConceptRelation.ADDRESSES: RelationSpec("論文がその概念を、解こうとしている課題として扱う", True),
+    PaperConceptRelation.MENTIONS: RelationSpec("論文がその概念に言及するだけで、使用も提案もしていない", False),
 }
 
 
@@ -87,13 +83,13 @@ class ConceptRelationType(enum.StrEnum):
 
 
 _CONCEPT_RELATION_SPECS: dict[ConceptRelationType, ConceptRelationSpec] = {
-    ConceptRelationType.IS_A: ConceptRelationSpec("source is a kind of target", "source -> target", True),
-    ConceptRelationType.PART_OF: ConceptRelationSpec("source is a component of target", "source -> target", True),
+    ConceptRelationType.IS_A: ConceptRelationSpec("source は target の一種", "source -> target", True),
+    ConceptRelationType.PART_OF: ConceptRelationSpec("source は target の構成要素", "source -> target", True),
     ConceptRelationType.USED_FOR: ConceptRelationSpec(
-        "source is used for the problem or purpose target", "source -> target", True
+        "source は課題または目的である target のために使われる", "source -> target", True
     ),
     ConceptRelationType.RELATED_TO: ConceptRelationSpec(
-        "source and target are related in a way the other relations cannot express; use sparingly",
+        "source と target が、他の関係では表現できない形で関連する。多用しない",
         "source -> target",
         True,
     ),
@@ -111,10 +107,8 @@ class Origin(enum.StrEnum):
 
 # General knowledge carries no evidence on purpose: a quote would claim a paper backs a statement it never made.
 _ORIGIN_SPECS: dict[Origin, OriginSpec] = {
-    Origin.PAPER: OriginSpec("Extracted from the paper text with quoted evidence", True),
-    Origin.GENERAL_KNOWLEDGE: OriginSpec(
-        "Added from general knowledge during normalization; unverified against any paper", False
-    ),
+    Origin.PAPER: OriginSpec("論文本文から、引用による根拠付きで抽出した", True),
+    Origin.GENERAL_KNOWLEDGE: OriginSpec("正規化のときに一般知識から追加した。どの論文とも照合していない", False),
 }
 
 
@@ -135,7 +129,7 @@ def _member_line(value: str, description: str, *notes: str) -> str:
 
 
 def _traversal_notes(traversable: bool) -> tuple[str, ...]:
-    return () if traversable else ("not used for traversal",)
+    return () if traversable else ("探索には使わない",)
 
 
 def describe_vocabulary() -> str:
@@ -158,13 +152,13 @@ def describe_vocabulary() -> str:
     lines += ["", "## ConceptRelationType", ""]
     for concept_relation in ConceptRelationType:
         edge_spec = concept_relation.spec
-        notes = (f"direction: {edge_spec.direction}", *_traversal_notes(edge_spec.traversable))
+        notes = (f"方向: {edge_spec.direction}", *_traversal_notes(edge_spec.traversable))
         lines.append(_member_line(concept_relation.value, edge_spec.description, *notes))
 
     lines += ["", "## Origin", ""]
     for origin in Origin:
         origin_spec = origin.spec
-        note = "requires evidence" if origin_spec.requires_evidence else "no evidence"
+        note = "evidence が必須" if origin_spec.requires_evidence else "evidence なし"
         lines.append(_member_line(origin.value, origin_spec.description, note))
 
     return "\n".join(lines) + "\n"

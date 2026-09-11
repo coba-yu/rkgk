@@ -14,21 +14,19 @@ from rkgk.domain.models.paper_extraction import PaperExtraction
 from rkgk.domain.models.vocabulary import describe_vocabulary
 
 _RULES = (
-    "Merge two concepts only when they mean the same thing, and keep concepts whose meaning you cannot tell "
-    "apart as separate normalized concepts.",
-    "Write `canonical_name` as the English canonical name of the concept, and derive `id` from it as its "
-    "lowercase words joined by `-`, matching `^[a-z0-9]+(-[a-z0-9]+)*$`.",
-    "Collect every spelling, abbreviation and Japanese name of the merged concepts in `aliases`.",
-    "List every extracted concept in exactly one `merged_from`, as the paper id and the local id it was "
-    "extracted under.",
-    "Keep `type` the type the merged concepts were extracted with.",
-    "Never add a concept that no paper extracted.",
-    "Add concept relations from general knowledge between normalized concepts only, and name no other id.",
-    "Prefer `is_a`, `part_of` and `used_for` for those relations, and use `related_to` only when none of the "
-    "other three fits.",
-    "Give every relation a `rationale` of one sentence saying why it holds, because a general-knowledge "
-    "relation carries no evidence.",
-    f"Set `schema_version` to {CONCEPT_NORMALIZATION_SCHEMA_VERSION}.",
+    "2 つの概念は同じものを指すときにだけ統合し、意味が同じかどうか判断できない概念は別々の正規化概念として残す。",
+    "`canonical_name` には概念の英語の正式名称を書き、`id` はそれを小文字にした単語を `-` でつないで導き、"
+    "`^[a-z0-9]+(-[a-z0-9]+)*$` に一致させる。",
+    "統合した概念のすべての表記、略語、日本語名を `aliases` に集める。",
+    "抽出されたすべての概念を、抽出元の論文 id と抽出時のローカル id として、ちょうど 1 つの `merged_from` "
+    "に記載する。",
+    "`type` は統合した概念が抽出されたときの type のままにする。",
+    "どの論文も抽出していない概念を追加しない。",
+    "一般知識に基づく概念間の関係は正規化概念どうしの間にだけ追加し、他の id は書かない。",
+    "それらの関係には `is_a`、`part_of`、`used_for` を優先して使い、他の 3 つのどれも当てはまらないときにだけ "
+    "`related_to` を使う。",
+    "一般知識に基づく関係には根拠がないため、すべての関係に、それが成り立つ理由を述べた 1 文の `rationale` を付ける。",
+    f"`schema_version` に {CONCEPT_NORMALIZATION_SCHEMA_VERSION} を設定する。",
 )
 
 
@@ -57,10 +55,10 @@ def build_concept_normalization_prompt(
     lines = [
         "# Task",
         "",
-        "You merge the concepts extracted from several research papers into one shared vocabulary.",
-        "Read the concepts below, report each of them once as a normalized concept, and say how those "
-        "normalized concepts relate to each other.",
-        "Answer with a single JSON object that follows the JSON Schema you were given.",
+        "複数の研究論文から抽出された概念を、1 つの共通語彙に統合する。",
+        "以下の概念を読み、そのそれぞれを正規化概念として 1 回だけ報告し、"
+        "それらの正規化概念どうしがどう関係するかを述べる。",
+        "与えられた JSON Schema に従う単一の JSON オブジェクトで回答する。",
         "",
         "## Rules",
         "",
@@ -68,15 +66,15 @@ def build_concept_normalization_prompt(
         "",
         "## Vocabulary",
         "",
-        "Use these node types and relation names, spelled exactly as shown.",
+        "ノード種別と関係名は以下のものを使い、表記は示したとおりにする。",
         "",
         describe_vocabulary().rstrip("\n"),
         "",
         "## Papers",
         "",
-        "Each paper was extracted on its own, so `c1`, `c2`, ... are local to the paper they are listed under.",
-        "A concept line reads `- local id | name | type | aliases: ... | description`, and it ends early when "
-        "the paper reported no aliases or no description.",
+        "論文ごとに個別に抽出したので、`c1`、`c2`、... はそれが記載されている論文の中でのみ通用する。",
+        "概念の行は `- local id | name | type | aliases: ... | description` という形式で、論文が aliases や "
+        "description を報告していない場合は途中で終わる。",
     ]
     for extraction in extractions:
         lines += ["", f"## Paper {extraction.paper_id}", "", *_describe_concepts(extraction)]
@@ -85,7 +83,7 @@ def build_concept_normalization_prompt(
             "",
             "## Previous attempt",
             "",
-            "This JSON was rejected.",
+            "この JSON は却下された。",
             "",
             "```json",
             json.dumps(previous, ensure_ascii=False, indent=2),
@@ -95,7 +93,7 @@ def build_concept_normalization_prompt(
             "",
             *(f"- {issue.path}: {issue.message}" for issue in issues),
             "",
-            "Return a complete corrected JSON object that fixes every issue above.",
+            "上記のすべての問題を修正した、完全な JSON オブジェクトを返す。",
         ]
-    lines += ["", "Return only the JSON object."]
+    lines += ["", "JSON オブジェクトだけを返す。"]
     return "\n".join(lines) + "\n"
