@@ -127,7 +127,7 @@ class PaperExtraction(Entity):
         return self
 
 
-class ExtractionIssue(Entity):
+class PaperExtractionIssue(Entity):
     """One reason an extraction is rejected, addressed by the path of the offending field."""
 
     path: str
@@ -137,37 +137,39 @@ class ExtractionIssue(Entity):
 class ExtractionValidationError(Exception):
     """Raised when an extraction does not fit the schema or does not match the paper it claims to describe."""
 
-    def __init__(self, issues: tuple[ExtractionIssue, ...]) -> None:
+    def __init__(self, issues: tuple[PaperExtractionIssue, ...]) -> None:
         super().__init__("; ".join(f"{issue.path}: {issue.message}" for issue in issues))
         self.issues = issues
 
 
 def _check_evidence(
     evidence: tuple[ExtractedEvidence, ...], prefix: str, page_texts: dict[int, str], page_count: int
-) -> list[ExtractionIssue]:
-    issues: list[ExtractionIssue] = []
+) -> list[PaperExtractionIssue]:
+    issues: list[PaperExtractionIssue] = []
     for index, item in enumerate(evidence):
         path = f"{prefix}.evidence[{index}]"
         if item.page not in page_texts:
-            issues.append(ExtractionIssue(path=f"{path}.page", message=f"page {item.page} is outside 1..{page_count}"))
+            issues.append(
+                PaperExtractionIssue(path=f"{path}.page", message=f"page {item.page} is outside 1..{page_count}")
+            )
             continue
         if normalize_whitespace(item.quote) not in page_texts[item.page]:
             issues.append(
-                ExtractionIssue(path=f"{path}.quote", message=f"is not found in the text of page {item.page}")
+                PaperExtractionIssue(path=f"{path}.quote", message=f"is not found in the text of page {item.page}")
             )
     return issues
 
 
-def check_extraction_against_paper(result: PaperExtraction, paper: Paper) -> tuple[ExtractionIssue, ...]:
+def check_extraction_against_paper(result: PaperExtraction, paper: Paper) -> tuple[PaperExtractionIssue, ...]:
     """Report every place where the extraction disagrees with the paper text.
 
     All issues are collected instead of raising on the first one, because an agent fixing its output needs the
     whole list to converge in one more attempt.
     """
-    issues: list[ExtractionIssue] = []
+    issues: list[PaperExtractionIssue] = []
     if result.paper_id != paper.meta.id:
         issues.append(
-            ExtractionIssue(
+            PaperExtractionIssue(
                 path="paper_id", message=f"is {result.paper_id}, but the paper being checked is {paper.meta.id}"
             )
         )
@@ -214,7 +216,7 @@ def _identifier_rules(paper_id: int) -> tuple[str, ...]:
 
 
 def build_extraction_prompt(
-    paper: Paper, previous: object | None = None, issues: tuple[ExtractionIssue, ...] = ()
+    paper: Paper, previous: object | None = None, issues: tuple[PaperExtractionIssue, ...] = ()
 ) -> str:
     """Write the instructions and the paper text an agent needs to extract this one paper.
 

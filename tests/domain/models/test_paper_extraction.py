@@ -12,8 +12,8 @@ from rkgk.domain.models.paper_extraction import (
     ExtractedConceptEdge,
     ExtractedEvidence,
     ExtractedPaperConceptEdge,
-    ExtractionIssue,
     PaperExtraction,
+    PaperExtractionIssue,
     build_extraction_prompt,
     build_extraction_schema,
     check_extraction_against_paper,
@@ -296,7 +296,7 @@ def test_a_first_attempt_mentions_neither_a_previous_answer_nor_issues() -> None
 
 def test_a_retry_repeats_the_rejected_json_and_the_issues() -> None:
     previous = {"paper_id": 1, "summary_ja": "要約"}
-    issues = (ExtractionIssue(path="paper_concepts[0].evidence[0].quote", message="is not found on page 1"),)
+    issues = (PaperExtractionIssue(path="paper_concepts[0].evidence[0].quote", message="is not found on page 1"),)
     prompt = build_extraction_prompt(load_fixture_paper(), previous, issues)
     assert '"summary_ja": "要約"' in prompt
     assert "- paper_concepts[0].evidence[0].quote: is not found on page 1" in prompt

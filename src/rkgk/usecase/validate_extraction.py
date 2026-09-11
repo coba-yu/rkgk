@@ -3,9 +3,9 @@
 from pydantic import ValidationError
 
 from rkgk.domain.models.paper_extraction import (
-    ExtractionIssue,
     ExtractionValidationError,
     PaperExtraction,
+    PaperExtractionIssue,
     check_extraction_against_paper,
 )
 from rkgk.domain.repositories.paper import PaperRepository
@@ -22,8 +22,8 @@ def _format_path(location: tuple[int | str, ...]) -> str:
     return "".join(parts) or "<root>"
 
 
-def _build_issues(error: ValidationError) -> tuple[ExtractionIssue, ...]:
-    return tuple(ExtractionIssue(path=_format_path(item["loc"]), message=item["msg"]) for item in error.errors())
+def _build_issues(error: ValidationError) -> tuple[PaperExtractionIssue, ...]:
+    return tuple(PaperExtractionIssue(path=_format_path(item["loc"]), message=item["msg"]) for item in error.errors())
 
 
 class ValidateExtractionUseCase:

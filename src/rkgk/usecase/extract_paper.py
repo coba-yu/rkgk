@@ -2,8 +2,8 @@
 
 from rkgk.domain.agents import StructuredOutputAgent
 from rkgk.domain.models.paper_extraction import (
-    ExtractionIssue,
     ExtractionValidationError,
+    PaperExtractionIssue,
     PaperExtractionRun,
     build_extraction_prompt,
     build_extraction_schema,
@@ -33,7 +33,7 @@ class ExtractPaperUseCase:
         schema = build_extraction_schema()
         attempts = 0
         previous: object | None = None
-        issues: tuple[ExtractionIssue, ...] = ()
+        issues: tuple[PaperExtractionIssue, ...] = ()
         while True:
             attempts += 1
             payload = self._agent.answer(build_extraction_prompt(paper, previous, issues), schema)

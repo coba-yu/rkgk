@@ -12,9 +12,9 @@ from pathlib import Path
 from rkgk.cli._output import EXIT_ERROR, EXIT_INVALID, EXIT_OK, print_json
 from rkgk.domain.agents import StructuredOutputAgentError
 from rkgk.domain.models.paper_extraction import (
-    ExtractionIssue,
     ExtractionValidationError,
     PaperExtraction,
+    PaperExtractionIssue,
     build_extraction_schema,
 )
 from rkgk.domain.repositories.extraction import ExtractionRepositoryError
@@ -125,7 +125,7 @@ def _run(args: argparse.Namespace, execute: Callable[[int, object], PaperExtract
     return EXIT_OK
 
 
-def _render_issue(issue: ExtractionIssue) -> dict[str, str]:
+def _render_issue(issue: PaperExtractionIssue) -> dict[str, str]:
     return {"path": issue.path, "message": issue.message}
 
 
