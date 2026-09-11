@@ -3,21 +3,21 @@
 from pydantic import ValidationError
 
 from rkgk.domain.agents import StructuredOutputAgent
-from rkgk.domain.models.base import format_error_path
 from rkgk.domain.models.concept_normalization import (
     ConceptNormalization,
     ConceptNormalizationIssue,
     ConceptNormalizationRun,
     ConceptNormalizationValidationError,
     MissingPaperExtractionsError,
-    build_concept_normalization_prompt,
     build_concept_normalization_schema,
-    check_normalization_against_extractions,
 )
 from rkgk.domain.models.paper_extraction import PaperExtraction
+from rkgk.domain.prompts.concept_normalization import build_concept_normalization_prompt
 from rkgk.domain.repositories.concept_normalization import ConceptNormalizationRepository
 from rkgk.domain.repositories.paper import PaperRepository
 from rkgk.domain.repositories.paper_extraction import PaperExtractionNotFoundError, PaperExtractionRepository
+from rkgk.domain.services.concept_normalization import check_normalization_against_extractions
+from rkgk.domain.services.validation import format_error_path
 
 
 def _build_issues(error: ValidationError) -> tuple[ConceptNormalizationIssue, ...]:

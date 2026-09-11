@@ -5,19 +5,15 @@ once per paper under a different local id; this step merges those local concepts
 a slug and records every spelling it was merged from in `aliases`.
 The agent also proposes concept-to-concept relations from general knowledge, which carry a rationale instead of
 evidence because no single paper backs them.
-`check_normalization_against_extractions` decides whether the merge really covers the extractions it claims to,
-which is the only defence against an agent dropping or inventing a concept.
-The prompt is built here too, so the rules the agent is told and the rules that are enforced cannot drift apart.
 """
 
-import json
 from typing import Literal, Self
 
 from pydantic import Field, field_validator, model_validator
 
 from rkgk.domain.models.base import Entity, Slug
-from rkgk.domain.models.paper_extraction import LocalConceptId, PaperExtraction
-from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType, describe_vocabulary
+from rkgk.domain.models.paper_extraction import LocalConceptId
+from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType
 
 CONCEPT_NORMALIZATION_SCHEMA_VERSION = 1
 
@@ -133,152 +129,9 @@ class MissingPaperExtractionsError(Exception):
         self.paper_ids = paper_ids
 
 
-def check_normalization_against_extractions(
-    normalization: ConceptNormalization, extractions: tuple[PaperExtraction, ...]
-) -> tuple[ConceptNormalizationIssue, ...]:
-    """Report every place where the normalization disagrees with the extractions it merges.
-
-    All issues are collected instead of raising on the first one, because an agent fixing its output needs the
-    whole list to converge in one more attempt.
-    """
-    types_by_ref = {
-        (extraction.paper_id, concept.local_id): concept.type
-        for extraction in extractions
-        for concept in extraction.concepts
-    }
-    known_papers = {extraction.paper_id for extraction in extractions}
-    issues: list[ConceptNormalizationIssue] = []
-    covered: set[tuple[int, str]] = set()
-    for index, concept in enumerate(normalization.concepts):
-        source_types: list[ConceptType] = []
-        for position, ref in enumerate(concept.merged_from):
-            key = (ref.paper_id, ref.local_id)
-            source_type = types_by_ref.get(key)
-            if source_type is None:
-                problem = (
-                    f"paper {ref.paper_id} has no concept {ref.local_id!r}"
-                    if ref.paper_id in known_papers
-                    else f"there is no extraction for paper {ref.paper_id}"
-                )
-                issues.append(
-                    ConceptNormalizationIssue(path=f"concepts[{index}].merged_from[{position}]", message=problem)
-                )
-                continue
-            covered.add(key)
-            source_types.append(source_type)
-        if source_types and concept.type not in source_types:
-            issues.append(
-                ConceptNormalizationIssue(
-                    path=f"concepts[{index}].type",
-                    message=(
-                        f"is {concept.type.value!r}, which none of the merged concepts has; they are "
-                        f"{', '.join(sorted({source.value for source in source_types}))}"
-                    ),
-                )
-            )
-    for extraction in extractions:
-        for concept in extraction.concepts:
-            if (extraction.paper_id, concept.local_id) not in covered:
-                issues.append(
-                    ConceptNormalizationIssue(
-                        path="concepts",
-                        message=f"paper {extraction.paper_id} {concept.local_id!r} is in no merged_from",
-                    )
-                )
-    return tuple(issues)
-
-
 def build_concept_normalization_schema() -> dict[str, object]:
     """Render the schema an agent must follow; it is generated so the prompt can never drift from the model."""
     return ConceptNormalization.model_json_schema()
-
-
-_RULES = (
-    "Merge two concepts only when they mean the same thing, and keep concepts whose meaning you cannot tell "
-    "apart as separate normalized concepts.",
-    "Write `canonical_name` as the English canonical name of the concept, and derive `id` from it as its "
-    "lowercase words joined by `-`, matching `^[a-z0-9]+(-[a-z0-9]+)*$`.",
-    "Collect every spelling, abbreviation and Japanese name of the merged concepts in `aliases`.",
-    "List every extracted concept in exactly one `merged_from`, as the paper id and the local id it was "
-    "extracted under.",
-    "Keep `type` the type the merged concepts were extracted with.",
-    "Never add a concept that no paper extracted.",
-    "Add concept relations from general knowledge between normalized concepts only, and name no other id.",
-    "Prefer `is_a`, `part_of` and `used_for` for those relations, and use `related_to` only when none of the "
-    "other three fits.",
-    "Give every relation a `rationale` of one sentence saying why it holds, because a general-knowledge "
-    "relation carries no evidence.",
-    f"Set `schema_version` to {CONCEPT_NORMALIZATION_SCHEMA_VERSION}.",
-)
-
-
-def _describe_concepts(extraction: PaperExtraction) -> list[str]:
-    lines = []
-    for concept in extraction.concepts:
-        parts = [concept.local_id, concept.name, concept.type.value]
-        if concept.aliases:
-            parts.append(f"aliases: {', '.join(concept.aliases)}")
-        if concept.description:
-            parts.append(concept.description)
-        lines.append("- " + " | ".join(parts))
-    return lines
-
-
-def build_concept_normalization_prompt(
-    extractions: tuple[PaperExtraction, ...],
-    previous: object | None = None,
-    issues: tuple[ConceptNormalizationIssue, ...] = (),
-) -> str:
-    """Write the instructions and the extracted concepts an agent needs to normalize them in one pass.
-
-    A retry gets the rejected JSON and the issues appended, so the agent corrects its own answer instead of
-    starting over and losing the parts that were already right.
-    """
-    lines = [
-        "# Task",
-        "",
-        "You merge the concepts extracted from several research papers into one shared vocabulary.",
-        "Read the concepts below, report each of them once as a normalized concept, and say how those "
-        "normalized concepts relate to each other.",
-        "Answer with a single JSON object that follows the JSON Schema you were given.",
-        "",
-        "## Rules",
-        "",
-        *(f"- {rule}" for rule in _RULES),
-        "",
-        "## Vocabulary",
-        "",
-        "Use these node types and relation names, spelled exactly as shown.",
-        "",
-        describe_vocabulary().rstrip("\n"),
-        "",
-        "## Papers",
-        "",
-        "Each paper was extracted on its own, so `c1`, `c2`, ... are local to the paper they are listed under.",
-        "A concept line reads `- local id | name | type | aliases: ... | description`, and it ends early when "
-        "the paper reported no aliases or no description.",
-    ]
-    for extraction in extractions:
-        lines += ["", f"## Paper {extraction.paper_id}", "", *_describe_concepts(extraction)]
-    if previous is not None:
-        lines += [
-            "",
-            "## Previous attempt",
-            "",
-            "This JSON was rejected.",
-            "",
-            "```json",
-            json.dumps(previous, ensure_ascii=False, indent=2),
-            "```",
-            "",
-            "## Issues",
-            "",
-            *(f"- {issue.path}: {issue.message}" for issue in issues),
-            "",
-            "Return a complete corrected JSON object that fixes every issue above.",
-        ]
-    lines += ["", "Return only the JSON object."]
-    return "\n".join(lines) + "\n"
 
 
 class ConceptNormalizationRun(Entity):
