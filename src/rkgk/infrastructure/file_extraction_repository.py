@@ -11,7 +11,7 @@ from pydantic import ValidationError
 
 from rkgk.domain.models.paper import build_paper_dir_name
 from rkgk.domain.models.paper_extraction import PaperExtraction
-from rkgk.domain.repositories.extraction import (
+from rkgk.domain.repositories.paper_extraction import (
     ExtractionArtifactInvalidError,
     ExtractionArtifactUnreadableError,
     ExtractionNotFoundError,

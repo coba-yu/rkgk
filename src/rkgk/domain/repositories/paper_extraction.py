@@ -22,7 +22,7 @@ class ExtractionArtifactInvalidError(ExtractionRepositoryError):
     """The artifact was read but is not a valid extraction, so a new extraction run is the remedy."""
 
 
-class ExtractionRepository(Protocol):
+class PaperExtractionRepository(Protocol):
     def save(self, result: PaperExtraction) -> None: ...
 
     def find(self, paper_id: int) -> PaperExtraction: ...

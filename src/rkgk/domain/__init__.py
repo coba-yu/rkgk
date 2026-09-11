@@ -51,19 +51,19 @@ from rkgk.domain.models.vocabulary import (
     traversable_concept_types,
     traversable_paper_relations,
 )
-from rkgk.domain.repositories.extraction import (
-    ExtractionArtifactInvalidError,
-    ExtractionArtifactUnreadableError,
-    ExtractionNotFoundError,
-    ExtractionRepository,
-    ExtractionRepositoryError,
-)
 from rkgk.domain.repositories.paper import (
     PaperArtifactInvalidError,
     PaperArtifactUnreadableError,
     PaperNotFoundError,
     PaperRepository,
     PaperRepositoryError,
+)
+from rkgk.domain.repositories.paper_extraction import (
+    ExtractionArtifactInvalidError,
+    ExtractionArtifactUnreadableError,
+    ExtractionNotFoundError,
+    ExtractionRepositoryError,
+    PaperExtractionRepository,
 )
 
 DOMAIN_MODEL_VERSION = 1
@@ -90,7 +90,6 @@ __all__ = [
     "ExtractionArtifactInvalidError",
     "ExtractionArtifactUnreadableError",
     "ExtractionNotFoundError",
-    "ExtractionRepository",
     "ExtractionRepositoryError",
     "LocalConceptId",
     "MarkerKind",
@@ -105,6 +104,7 @@ __all__ = [
     "PaperConceptRelation",
     "PaperExtraction",
     "PaperExtractionIssue",
+    "PaperExtractionRepository",
     "PaperExtractionRun",
     "PaperExtractionValidationError",
     "PaperIndexEntry",

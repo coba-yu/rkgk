@@ -8,8 +8,8 @@ from rkgk.domain.models.paper_extraction import (
     build_paper_extraction_prompt,
     build_paper_extraction_schema,
 )
-from rkgk.domain.repositories.extraction import ExtractionRepository
 from rkgk.domain.repositories.paper import PaperRepository
+from rkgk.domain.repositories.paper_extraction import PaperExtractionRepository
 from rkgk.usecase.validate_extraction import ValidateExtractionUseCase
 
 
@@ -18,7 +18,7 @@ class ExtractPaperUseCase:
         self,
         paper_repository: PaperRepository,
         agent: StructuredOutputAgent,
-        extraction_repository: ExtractionRepository,
+        extraction_repository: PaperExtractionRepository,
         max_attempts: int = 3,
     ) -> None:
         self._paper_repository = paper_repository

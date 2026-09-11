@@ -10,7 +10,7 @@ from rkgk.domain.models.paper_extraction import (
     PaperExtraction,
 )
 from rkgk.domain.models.vocabulary import ConceptType, PaperConceptRelation
-from rkgk.domain.repositories.extraction import (
+from rkgk.domain.repositories.paper_extraction import (
     ExtractionArtifactInvalidError,
     ExtractionNotFoundError,
     ExtractionRepositoryError,

@@ -4,7 +4,7 @@ from rkgk.domain.agents import StructuredOutputAgent, StructuredOutputAgentError
 from rkgk.domain.models.paper_extraction import PaperExtractionValidationError
 from rkgk.domain.repositories.paper import PaperNotFoundError
 from rkgk.usecase.extract_paper import ExtractPaperUseCase
-from tests.usecase.fakes import FakeExtractionRepository, FakePaperRepository, build_paper
+from tests.usecase.fakes import FakePaperExtractionRepository, FakePaperRepository, build_paper
 
 PAPER = build_paper(1, "We study a retrieval-augmented generation pipeline.\n", "The pipeline embeds chunks.\n")
 
@@ -52,20 +52,20 @@ class FailingAgent:
 
 
 def build_use_case(
-    agent: StructuredOutputAgent, saved: FakeExtractionRepository, max_attempts: int = 3
+    agent: StructuredOutputAgent, saved: FakePaperExtractionRepository, max_attempts: int = 3
 ) -> ExtractPaperUseCase:
     return ExtractPaperUseCase(FakePaperRepository({1: PAPER}), agent, saved, max_attempts=max_attempts)
 
 
 def test_an_answer_that_passes_validation_is_saved_after_one_attempt() -> None:
-    saved = FakeExtractionRepository()
+    saved = FakePaperExtractionRepository()
     outcome = build_use_case(FakeAgent(VALID_PAYLOAD), saved).execute(1)
     assert outcome.attempts == 1
     assert saved.saved == [outcome.extraction]
 
 
 def test_a_rejected_answer_is_retried_and_the_attempts_are_counted() -> None:
-    saved = FakeExtractionRepository()
+    saved = FakePaperExtractionRepository()
     agent = FakeAgent(INVALID_PAYLOAD, VALID_PAYLOAD)
     outcome = build_use_case(agent, saved).execute(1)
     assert outcome.attempts == 2
@@ -74,14 +74,14 @@ def test_a_rejected_answer_is_retried_and_the_attempts_are_counted() -> None:
 
 def test_the_retry_shows_the_agent_its_rejected_answer_and_the_issues() -> None:
     agent = FakeAgent(INVALID_PAYLOAD, VALID_PAYLOAD)
-    build_use_case(agent, FakeExtractionRepository()).execute(1)
+    build_use_case(agent, FakePaperExtractionRepository()).execute(1)
     assert "Previous attempt" not in agent.prompts[0]
     assert "a sentence the paper never wrote" in agent.prompts[1]
     assert "paper_concepts[0].evidence[0].quote" in agent.prompts[1]
 
 
 def test_the_last_rejection_is_raised_and_nothing_is_saved() -> None:
-    saved = FakeExtractionRepository()
+    saved = FakePaperExtractionRepository()
     agent = FakeAgent(INVALID_PAYLOAD, INVALID_PAYLOAD)
     with pytest.raises(PaperExtractionValidationError, match="is not found in the text of page 1"):
         build_use_case(agent, saved, max_attempts=2).execute(1)
@@ -91,24 +91,24 @@ def test_the_last_rejection_is_raised_and_nothing_is_saved() -> None:
 def test_the_agent_is_asked_only_as_often_as_the_attempts_allow() -> None:
     agent = FakeAgent(INVALID_PAYLOAD, INVALID_PAYLOAD, VALID_PAYLOAD)
     with pytest.raises(PaperExtractionValidationError):
-        build_use_case(agent, FakeExtractionRepository(), max_attempts=2).execute(1)
+        build_use_case(agent, FakePaperExtractionRepository(), max_attempts=2).execute(1)
     assert len(agent.prompts) == 2
 
 
 def test_an_answer_that_is_not_an_extraction_at_all_is_retried() -> None:
-    saved = FakeExtractionRepository()
+    saved = FakePaperExtractionRepository()
     outcome = build_use_case(FakeAgent("not an object", VALID_PAYLOAD), saved).execute(1)
     assert outcome.attempts == 2
 
 
 def test_the_agent_error_is_propagated() -> None:
     with pytest.raises(StructuredOutputAgentError, match="was not found"):
-        build_use_case(FailingAgent(), FakeExtractionRepository()).execute(1)
+        build_use_case(FailingAgent(), FakePaperExtractionRepository()).execute(1)
 
 
 def test_an_unknown_paper_is_reported_before_the_agent_is_asked() -> None:
     agent = FakeAgent(VALID_PAYLOAD)
-    use_case = ExtractPaperUseCase(FakePaperRepository({}), agent, FakeExtractionRepository())
+    use_case = ExtractPaperUseCase(FakePaperRepository({}), agent, FakePaperExtractionRepository())
     with pytest.raises(PaperNotFoundError, match="paper 1"):
         use_case.execute(1)
     assert agent.prompts == []

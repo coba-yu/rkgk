@@ -4,8 +4,8 @@ from datetime import UTC, datetime
 
 from rkgk.domain.models.paper import Page, Paper, PaperIndexEntry, PaperMeta, PaperPreprocessInfo
 from rkgk.domain.models.paper_extraction import PaperExtraction
-from rkgk.domain.repositories.extraction import ExtractionNotFoundError
 from rkgk.domain.repositories.paper import PaperNotFoundError
+from rkgk.domain.repositories.paper_extraction import ExtractionNotFoundError
 
 PREPROCESS = PaperPreprocessInfo(tool="pymupdf", version="1.24.0", processed_at=datetime(2026, 1, 1, tzinfo=UTC))
 
@@ -39,7 +39,7 @@ class FakePaperRepository:
         return self._papers[paper_id]
 
 
-class FakeExtractionRepository:
+class FakePaperExtractionRepository:
     def __init__(self) -> None:
         self.saved: list[PaperExtraction] = []
 

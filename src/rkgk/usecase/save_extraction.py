@@ -1,13 +1,13 @@
 """Use case that stores an extraction payload once it has been validated."""
 
 from rkgk.domain.models.paper_extraction import PaperExtraction
-from rkgk.domain.repositories.extraction import ExtractionRepository
 from rkgk.domain.repositories.paper import PaperRepository
+from rkgk.domain.repositories.paper_extraction import PaperExtractionRepository
 from rkgk.usecase.validate_extraction import ValidateExtractionUseCase
 
 
 class SaveExtractionUseCase:
-    def __init__(self, paper_repository: PaperRepository, extraction_repository: ExtractionRepository) -> None:
+    def __init__(self, paper_repository: PaperRepository, extraction_repository: PaperExtractionRepository) -> None:
         self._validate = ValidateExtractionUseCase(paper_repository)
         self._extraction_repository = extraction_repository
 

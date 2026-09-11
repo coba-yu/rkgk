@@ -17,8 +17,8 @@ from rkgk.domain.models.paper_extraction import (
     PaperExtractionValidationError,
     build_paper_extraction_schema,
 )
-from rkgk.domain.repositories.extraction import ExtractionRepositoryError
 from rkgk.domain.repositories.paper import PaperRepositoryError
+from rkgk.domain.repositories.paper_extraction import ExtractionRepositoryError
 from rkgk.infrastructure.claude_extractor import ClaudeExtractor
 from rkgk.infrastructure.file_extraction_repository import FileExtractionRepository
 from rkgk.infrastructure.file_paper_repository import FilePaperRepository
