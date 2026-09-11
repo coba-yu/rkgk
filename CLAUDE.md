@@ -18,6 +18,11 @@ RAG と Knowledge Graph の技術理解が主目的である。
 - コードコメントには Why / Why not を書く。
 - エージェントに渡すプロンプトは、見出しとフィールド名・enum 値などの物理名を除いて日本語で書く。
 
+## 依存関係
+
+- `pyproject.toml` の直接依存（dependencies、optional-dependencies、dependency-groups）は、サプライチェーン攻撃対策として `==` で固定する。
+- 固定するバージョンは `uv lock --upgrade` で解決できる最新版にし、`uv.lock` も同じ解決結果に更新する。
+
 ## ドキュメント
 
 - 複数の文を1行にまとめない。1文ごとに改行する。
