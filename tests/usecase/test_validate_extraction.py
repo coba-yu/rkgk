@@ -3,7 +3,7 @@ from typing import Any
 
 import pytest
 
-from rkgk.domain.models.extraction import ExtractionValidationError
+from rkgk.domain.models.paper_extraction import ExtractionValidationError
 from rkgk.domain.repositories.paper import PaperNotFoundError
 from rkgk.usecase.validate_extraction import ValidateExtractionUseCase
 from tests.usecase.fakes import FakePaperRepository, build_paper

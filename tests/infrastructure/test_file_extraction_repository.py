@@ -3,11 +3,11 @@ from pathlib import Path
 
 import pytest
 
-from rkgk.domain.models.extraction import (
+from rkgk.domain.models.paper_extraction import (
     ExtractedConcept,
     ExtractedEvidence,
     ExtractedPaperConceptEdge,
-    ExtractionResult,
+    PaperExtraction,
 )
 from rkgk.domain.models.vocabulary import ConceptType, PaperConceptRelation
 from rkgk.domain.repositories.extraction import (
@@ -17,7 +17,7 @@ from rkgk.domain.repositories.extraction import (
 )
 from rkgk.infrastructure.file_extraction_repository import FileExtractionRepository
 
-RESULT = ExtractionResult(
+RESULT = PaperExtraction(
     schema_version=1,
     paper_id=1,
     summary_ja="この論文は検索拡張生成のパイプラインを提案する。",
@@ -76,7 +76,7 @@ def test_a_corrupted_file_is_reported_as_invalid(tmp_path: Path) -> None:
 def test_a_file_that_is_not_an_extraction_is_reported_as_invalid(tmp_path: Path) -> None:
     FileExtractionRepository(tmp_path).save(RESULT)
     (tmp_path / "papers" / "0001" / "extraction.json").write_text('{"paper_id": 1}', encoding="utf-8")
-    with pytest.raises(ExtractionArtifactInvalidError, match="is not a valid ExtractionResult"):
+    with pytest.raises(ExtractionArtifactInvalidError, match="is not a valid PaperExtraction"):
         FileExtractionRepository(tmp_path).find(1)
 
 

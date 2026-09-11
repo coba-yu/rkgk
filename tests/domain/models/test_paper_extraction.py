@@ -4,7 +4,8 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from rkgk.domain.models.extraction import (
+from rkgk.domain.models.paper import Page, Paper, PaperMeta, PaperPreprocessInfo, parse_page
+from rkgk.domain.models.paper_extraction import (
     EXTRACTION_SCHEMA_VERSION,
     LOCAL_CONCEPT_ID_PATTERN,
     ExtractedConcept,
@@ -12,13 +13,12 @@ from rkgk.domain.models.extraction import (
     ExtractedEvidence,
     ExtractedPaperConceptEdge,
     ExtractionIssue,
-    ExtractionResult,
+    PaperExtraction,
     build_extraction_prompt,
     build_extraction_schema,
     check_extraction_against_paper,
     normalize_whitespace,
 )
-from rkgk.domain.models.paper import Page, Paper, PaperMeta, PaperPreprocessInfo, parse_page
 from rkgk.domain.models.vocabulary import (
     ConceptRelationType,
     ConceptType,
@@ -52,7 +52,7 @@ def evidence(page: int = 1, quote: str = "retrieval-augmented") -> tuple[Extract
     return (ExtractedEvidence(page=page, quote=quote),)
 
 
-def build_result(**overrides: object) -> ExtractionResult:
+def build_result(**overrides: object) -> PaperExtraction:
     payload: dict[str, object] = {
         "schema_version": 1,
         "paper_id": 1,
@@ -63,7 +63,7 @@ def build_result(**overrides: object) -> ExtractionResult:
         ),
     }
     payload.update(overrides)
-    return ExtractionResult.model_validate(payload)
+    return PaperExtraction.model_validate(payload)
 
 
 def test_a_result_that_matches_the_paper_is_accepted() -> None:

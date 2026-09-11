@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from rkgk.domain.models.extraction import ExtractorError
+from rkgk.domain.models.paper_extraction import ExtractorError
 from rkgk.infrastructure.claude_extractor import ClaudeExtractor
 
 SCHEMA: dict[str, object] = {

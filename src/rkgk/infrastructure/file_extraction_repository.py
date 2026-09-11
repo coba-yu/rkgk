@@ -9,8 +9,8 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from rkgk.domain.models.extraction import ExtractionResult
 from rkgk.domain.models.paper import build_paper_dir_name
+from rkgk.domain.models.paper_extraction import PaperExtraction
 from rkgk.domain.repositories.extraction import (
     ExtractionArtifactInvalidError,
     ExtractionArtifactUnreadableError,
@@ -33,7 +33,7 @@ class FileExtractionRepository:
     def path_for(self, paper_id: int) -> Path:
         return self._papers_dir / build_paper_dir_name(paper_id) / EXTRACTION_FILE_NAME
 
-    def save(self, result: ExtractionResult) -> None:
+    def save(self, result: PaperExtraction) -> None:
         path = self.path_for(result.paper_id)
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
@@ -47,7 +47,7 @@ class FileExtractionRepository:
                 result.paper_id,
             ) from error
 
-    def find(self, paper_id: int) -> ExtractionResult:
+    def find(self, paper_id: int) -> PaperExtraction:
         path = self.path_for(paper_id)
         try:
             raw = path.read_text(encoding="utf-8")
@@ -64,8 +64,8 @@ class FileExtractionRepository:
         except json.JSONDecodeError as error:
             raise _fail(ExtractionArtifactInvalidError, path, f"is not valid JSON: {error}", paper_id) from error
         try:
-            return ExtractionResult.model_validate(payload)
+            return PaperExtraction.model_validate(payload)
         except ValidationError as error:
             raise _fail(
-                ExtractionArtifactInvalidError, path, f"is not a valid ExtractionResult: {error}", paper_id
+                ExtractionArtifactInvalidError, path, f"is not a valid PaperExtraction: {error}", paper_id
             ) from error

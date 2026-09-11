@@ -1,6 +1,6 @@
 import pytest
 
-from rkgk.domain.models.extraction import ExtractionValidationError
+from rkgk.domain.models.paper_extraction import ExtractionValidationError
 from rkgk.domain.repositories.paper import PaperNotFoundError
 from rkgk.usecase.save_extraction import SaveExtractionUseCase
 from tests.usecase.fakes import FakeExtractionRepository, FakePaperRepository

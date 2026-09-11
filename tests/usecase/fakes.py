@@ -2,8 +2,8 @@
 
 from datetime import UTC, datetime
 
-from rkgk.domain.models.extraction import ExtractionResult
 from rkgk.domain.models.paper import Page, Paper, PaperIndexEntry, PaperMeta, PaperPreprocessInfo
+from rkgk.domain.models.paper_extraction import PaperExtraction
 from rkgk.domain.repositories.extraction import ExtractionNotFoundError
 from rkgk.domain.repositories.paper import PaperNotFoundError
 
@@ -41,12 +41,12 @@ class FakePaperRepository:
 
 class FakeExtractionRepository:
     def __init__(self) -> None:
-        self.saved: list[ExtractionResult] = []
+        self.saved: list[PaperExtraction] = []
 
-    def save(self, result: ExtractionResult) -> None:
+    def save(self, result: PaperExtraction) -> None:
         self.saved.append(result)
 
-    def find(self, paper_id: int) -> ExtractionResult:
+    def find(self, paper_id: int) -> PaperExtraction:
         for result in reversed(self.saved):
             if result.paper_id == paper_id:
                 return result

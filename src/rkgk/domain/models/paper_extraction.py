@@ -78,7 +78,7 @@ class ExtractedConceptEdge(Entity):
         return self
 
 
-class ExtractionResult(Entity):
+class PaperExtraction(Entity):
     # Literal pins the version so an artifact written against another schema fails validation instead of being
     # read as if it were the current one.
     schema_version: Literal[1]
@@ -158,7 +158,7 @@ def _check_evidence(
     return issues
 
 
-def check_extraction_against_paper(result: ExtractionResult, paper: Paper) -> tuple[ExtractionIssue, ...]:
+def check_extraction_against_paper(result: PaperExtraction, paper: Paper) -> tuple[ExtractionIssue, ...]:
     """Report every place where the extraction disagrees with the paper text.
 
     All issues are collected instead of raising on the first one, because an agent fixing its output needs the
@@ -183,7 +183,7 @@ def check_extraction_against_paper(result: ExtractionResult, paper: Paper) -> tu
 
 def build_extraction_schema() -> dict[str, object]:
     """Render the schema an agent must follow; it is generated so the prompt can never drift from the model."""
-    return ExtractionResult.model_json_schema()
+    return PaperExtraction.model_json_schema()
 
 
 _RULES = (
@@ -275,7 +275,7 @@ def build_extraction_prompt(
 class ExtractionOutcome(Entity):
     """What one extraction run produced, with the number of attempts it took to pass validation."""
 
-    result: ExtractionResult
+    result: PaperExtraction
     attempts: int = Field(ge=1)
 
 

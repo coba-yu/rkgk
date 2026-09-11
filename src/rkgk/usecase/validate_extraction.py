@@ -2,10 +2,10 @@
 
 from pydantic import ValidationError
 
-from rkgk.domain.models.extraction import (
+from rkgk.domain.models.paper_extraction import (
     ExtractionIssue,
-    ExtractionResult,
     ExtractionValidationError,
+    PaperExtraction,
     check_extraction_against_paper,
 )
 from rkgk.domain.repositories.paper import PaperRepository
@@ -30,9 +30,9 @@ class ValidateExtractionUseCase:
     def __init__(self, paper_repository: PaperRepository) -> None:
         self._paper_repository = paper_repository
 
-    def execute(self, paper_id: int, payload: object) -> ExtractionResult:
+    def execute(self, paper_id: int, payload: object) -> PaperExtraction:
         try:
-            result = ExtractionResult.model_validate(payload)
+            result = PaperExtraction.model_validate(payload)
         except ValidationError as error:
             raise ExtractionValidationError(_build_issues(error)) from error
         issues = check_extraction_against_paper(result, self._paper_repository.find(paper_id))

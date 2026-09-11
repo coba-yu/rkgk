@@ -7,7 +7,7 @@ from typing import Any
 import pytest
 
 from rkgk.cli import extract, main
-from rkgk.domain.models.extraction import ExtractorError
+from rkgk.domain.models.paper_extraction import ExtractorError
 
 FIXTURE_DIR = Path(__file__).parent.parent / "fixtures"
 

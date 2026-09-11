@@ -15,7 +15,7 @@ A run that hits the turn limit exits 1 with `is_error: true`, `subtype: "error_m
 import json
 import subprocess
 
-from rkgk.domain.models.extraction import ExtractorError
+from rkgk.domain.models.paper_extraction import ExtractorError
 
 # The structured answer costs a turn of its own on top of the assistant turn, so one turn can never succeed.
 MAX_TURNS = "2"

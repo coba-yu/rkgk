@@ -1,6 +1,6 @@
 """Use case that extracts one paper with an agent and stores the result."""
 
-from rkgk.domain.models.extraction import (
+from rkgk.domain.models.paper_extraction import (
     ExtractionIssue,
     ExtractionOutcome,
     ExtractionValidationError,

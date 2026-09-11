@@ -10,11 +10,11 @@ from collections.abc import Callable
 from pathlib import Path
 
 from rkgk.cli._output import EXIT_ERROR, EXIT_INVALID, EXIT_OK, print_json
-from rkgk.domain.models.extraction import (
+from rkgk.domain.models.paper_extraction import (
     ExtractionIssue,
-    ExtractionResult,
     ExtractionValidationError,
     ExtractorError,
+    PaperExtraction,
     build_extraction_schema,
 )
 from rkgk.domain.repositories.extraction import ExtractionRepositoryError
@@ -101,9 +101,7 @@ def _run_save(args: argparse.Namespace) -> int:
     return _run(args, use_case.execute, {"path": str(extraction_repository.path_for(args.paper_id))})
 
 
-def _run(
-    args: argparse.Namespace, execute: Callable[[int, object], ExtractionResult], extra: dict[str, object]
-) -> int:
+def _run(args: argparse.Namespace, execute: Callable[[int, object], PaperExtraction], extra: dict[str, object]) -> int:
     try:
         payload = json.loads(args.json_path.read_text(encoding="utf-8"))
         result = execute(args.paper_id, payload)
@@ -127,7 +125,7 @@ def _render_issue(issue: ExtractionIssue) -> dict[str, str]:
     return {"path": issue.path, "message": issue.message}
 
 
-def _render_result(result: ExtractionResult) -> dict[str, object]:
+def _render_result(result: PaperExtraction) -> dict[str, object]:
     return {
         "paper_id": result.paper_id,
         "concepts": len(result.concepts),

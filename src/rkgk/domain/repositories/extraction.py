@@ -2,7 +2,7 @@
 
 from typing import Protocol
 
-from rkgk.domain.models.extraction import ExtractionResult
+from rkgk.domain.models.paper_extraction import PaperExtraction
 from rkgk.domain.repositories.base import RepositoryError
 
 
@@ -23,6 +23,6 @@ class ExtractionArtifactInvalidError(ExtractionRepositoryError):
 
 
 class ExtractionRepository(Protocol):
-    def save(self, result: ExtractionResult) -> None: ...
+    def save(self, result: PaperExtraction) -> None: ...
 
-    def find(self, paper_id: int) -> ExtractionResult: ...
+    def find(self, paper_id: int) -> PaperExtraction: ...
