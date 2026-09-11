@@ -42,21 +42,13 @@ def build_concept_normalization_prompt(
     starting over and losing the parts that were already right.
     """
     lines = [
-        "# Task",
-        "",
         _read(_DIR / "task.md"),
         "",
-        "## Rules",
-        "",
         _read(_DIR / "rules.md"),
-        "",
-        "## Vocabulary",
         "",
         _read(_SHARED_DIR / "vocabulary.md"),
         "",
         describe_vocabulary().rstrip("\n"),
-        "",
-        "## Papers",
         "",
         _read(_DIR / "papers.md"),
     ]
@@ -64,8 +56,6 @@ def build_concept_normalization_prompt(
         lines += ["", f"## Paper {extraction.paper_id}", "", *_describe_concepts(extraction)]
     if previous is not None:
         lines += [
-            "",
-            "## Previous attempt",
             "",
             _read(_SHARED_DIR / "previous_attempt.md"),
             "",

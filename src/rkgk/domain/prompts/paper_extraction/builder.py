@@ -28,21 +28,13 @@ def build_paper_extraction_prompt(
     starting over and losing the parts that were already right.
     """
     lines = [
-        "# Task",
-        "",
         _read(_DIR / "task.md"),
         "",
-        "## Rules",
-        "",
         _read(_DIR / "rules.md"),
-        "",
-        "## Vocabulary",
         "",
         _read(_SHARED_DIR / "vocabulary.md"),
         "",
         describe_vocabulary().rstrip("\n"),
-        "",
-        "## Identifiers",
         "",
         _read(_DIR / "identifiers.md"),
         "",
@@ -57,8 +49,6 @@ def build_paper_extraction_prompt(
         lines += ["", f"## Page {page.number}", "", page.text.rstrip("\n")]
     if previous is not None:
         lines += [
-            "",
-            "## Previous attempt",
             "",
             _read(_SHARED_DIR / "previous_attempt.md"),
             "",
