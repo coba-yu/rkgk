@@ -5,7 +5,7 @@ import numpy as np
 import pytest
 
 from rkgk.domain.models.embedding import EmbeddedItem, EmbeddedItemKind, EmbeddingTable
-from rkgk.domain.models.graph import Concept, ConceptEdge, Evidence, KnowledgeGraph, PaperConceptEdge
+from rkgk.domain.models.graph import ChunkEvidence, Concept, ConceptEdge, KnowledgeGraph, PaperConceptEdge
 from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType, Origin, PaperConceptRelation
 from rkgk.domain.repositories.index import IndexArtifactInvalidError, IndexNotFoundError, IndexRepositoryError
 from rkgk.infrastructure.file_index_repository import FileIndexRepository
@@ -43,7 +43,7 @@ GRAPH = KnowledgeGraph(
             paper_id=1,
             concept_id="retrieval",
             relation=PaperConceptRelation.USES,
-            evidence=(Evidence(page=1, quote="We use retrieval.", chunk_id="1:0"),),
+            evidence=(ChunkEvidence(page=1, quote="We use retrieval.", chunk_id="1:0"),),
         ),
     ),
     concept_relations=(
@@ -53,7 +53,7 @@ GRAPH = KnowledgeGraph(
             relation=ConceptRelationType.USED_FOR,
             origin=Origin.PAPER,
             paper_id=1,
-            evidence=(Evidence(page=1, quote="Retrieval draws on the knowledge graph.", chunk_id="1:0"),),
+            evidence=(ChunkEvidence(page=1, quote="Retrieval draws on the knowledge graph.", chunk_id="1:0"),),
         ),
         ConceptEdge(
             source_id="knowledge-graph",

@@ -1,19 +1,22 @@
 import pytest
 from pydantic import ValidationError
 
-from rkgk.domain.models.graph import Concept, ConceptEdge, Evidence, KnowledgeGraph, PaperConceptEdge
+from rkgk.domain.models.graph import ChunkEvidence, Concept, ConceptEdge, KnowledgeGraph, PaperConceptEdge
 from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType, Origin, PaperConceptRelation
 
-EVIDENCE = Evidence(page=3, quote="we propose a retrieval augmented generation pipeline")
+EVIDENCE = ChunkEvidence(page=3, quote="we propose a retrieval augmented generation pipeline", chunk_id="1:0")
 
 
 def test_evidence_rejects_blank_quote() -> None:
     with pytest.raises(ValidationError):
-        Evidence(page=1, quote="   \n ")
+        ChunkEvidence(page=1, quote="   \n ", chunk_id="1:0")
 
 
-def test_evidence_accepts_optional_chunk_id() -> None:
-    assert Evidence(page=1, quote="a quote", chunk_id="1:0").chunk_id == "1:0"
+def test_evidence_requires_a_chunk_id() -> None:
+    with pytest.raises(ValidationError):
+        ChunkEvidence(page=1, quote="a quote")  # ty: ignore[missing-argument]
+    with pytest.raises(ValidationError):
+        ChunkEvidence(page=1, quote="a quote", chunk_id="abc")
 
 
 @pytest.mark.parametrize("concept_id", ["Graph-RAG", "graph-rag-", "-graph-rag", "graph rag", "graph--rag", ""])
@@ -125,11 +128,11 @@ def test_concept_relation_accepts_general_knowledge_without_paper_id_or_evidence
 
 def test_extra_fields_are_rejected() -> None:
     with pytest.raises(ValidationError):
-        Evidence(page=1, quote="a quote", pages=2)  # ty: ignore[unknown-argument]
+        ChunkEvidence(page=1, quote="a quote", chunk_id="1:0", pages=2)  # ty: ignore[unknown-argument]
 
 
 def test_models_are_frozen() -> None:
-    evidence = Evidence(page=1, quote="a quote")
+    evidence = ChunkEvidence(page=1, quote="a quote", chunk_id="1:0")
     with pytest.raises(ValidationError):
         evidence.page = 2  # ty: ignore[invalid-assignment]
 

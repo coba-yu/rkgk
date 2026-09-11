@@ -2,7 +2,7 @@
 
 An extraction speaks in ids that are local to one paper, and a normalization says which of those local concepts
 became which global slug, so neither artifact is a graph on its own.
-This module replaces every local id by its slug, attaches the resolved evidence to every edge, and appends the
+This module replaces every local id by its slug, attaches the chunk evidence to every edge, and appends the
 relations the normalization added from general knowledge.
 It reads the extraction, normalization and graph models and owns no data.
 """
@@ -12,8 +12,8 @@ from collections.abc import Mapping, Sequence
 import networkx as nx
 
 from rkgk.domain.models.concept_normalization import ConceptNormalization
-from rkgk.domain.models.graph import Concept, ConceptEdge, Evidence, KnowledgeGraph, PaperConceptEdge
-from rkgk.domain.models.paper_extraction import ExtractedEvidence, PaperExtraction
+from rkgk.domain.models.graph import ChunkEvidence, Concept, ConceptEdge, KnowledgeGraph, PaperConceptEdge
+from rkgk.domain.models.paper_extraction import PageEvidence, PaperExtraction
 from rkgk.domain.models.vocabulary import ConceptRelationType, Origin, PaperConceptRelation
 
 
@@ -32,23 +32,25 @@ def _find_slug(slug_of: Mapping[tuple[int, str], str], paper_id: int, local_id: 
     return slug
 
 
-def _find_resolved_evidence(
-    resolved_evidence: Mapping[int, Mapping[ExtractedEvidence, Evidence]],
+def _find_chunk_evidence(
+    chunk_evidence: Mapping[int, Mapping[PageEvidence, ChunkEvidence]],
     paper_id: int,
-    extracted: Sequence[ExtractedEvidence],
-) -> tuple[Evidence, ...]:
-    """Return the resolved evidence, the one carrying a chunk id, of every quote of one edge."""
-    of_paper = resolved_evidence.get(paper_id, {})
-    items: list[Evidence] = []
+    extracted: Sequence[PageEvidence],
+) -> tuple[ChunkEvidence, ...]:
+    """Return the chunk evidence, the one carrying a chunk id, of every quote of one edge."""
+    of_paper = chunk_evidence.get(paper_id, {})
+    items: list[ChunkEvidence] = []
     for item in extracted:
-        resolved = of_paper.get(item)
-        if resolved is None:
-            raise ValueError(f"paper {paper_id} page {item.page}: quote {item.quote!r} has no resolved evidence")
-        items.append(resolved)
+        found = of_paper.get(item)
+        if found is None:
+            raise ValueError(f"paper {paper_id} page {item.page}: quote {item.quote!r} has no chunk evidence")
+        items.append(found)
     return tuple(items)
 
 
-def _merge_evidence(existing: tuple[Evidence, ...], added: tuple[Evidence, ...]) -> tuple[Evidence, ...]:
+def _merge_evidence(
+    existing: tuple[ChunkEvidence, ...], added: tuple[ChunkEvidence, ...]
+) -> tuple[ChunkEvidence, ...]:
     """Append the evidence that is not there yet, keeping the order of first occurrence."""
     merged = list(existing)
     for item in added:
@@ -60,11 +62,11 @@ def _merge_evidence(existing: tuple[Evidence, ...], added: tuple[Evidence, ...])
 def build_knowledge_graph(
     extractions: Sequence[PaperExtraction],
     normalization: ConceptNormalization,
-    resolved_evidence: Mapping[int, Mapping[ExtractedEvidence, Evidence]],
+    chunk_evidence: Mapping[int, Mapping[PageEvidence, ChunkEvidence]],
 ) -> KnowledgeGraph:
     """Build the graph of every extracted paper, addressed by the slugs of the normalization.
 
-    `resolved_evidence` is keyed by paper id and each value is what `resolve_extraction_evidence` returned for
+    `chunk_evidence` is keyed by paper id and each value is what `resolve_extraction_evidence` returned for
     that paper, so the quotes of an edge become evidence that points at a chunk.
     The normalization is taken as it is: the build use case checks it against the extractions before calling
     here, and repeating the check would only report the same problems twice.
@@ -87,8 +89,8 @@ def build_knowledge_graph(
         for concept in normalization.concepts
     )
 
-    paper_edges: dict[tuple[int, str, PaperConceptRelation], tuple[Evidence, ...]] = {}
-    concept_edges: dict[tuple[str, str, ConceptRelationType, int], tuple[Evidence, ...]] = {}
+    paper_edges: dict[tuple[int, str, PaperConceptRelation], tuple[ChunkEvidence, ...]] = {}
+    concept_edges: dict[tuple[str, str, ConceptRelationType, int], tuple[ChunkEvidence, ...]] = {}
     for extraction in extractions:
         paper_id = extraction.paper_id
         for edge in extraction.paper_concepts:
@@ -96,7 +98,7 @@ def build_knowledge_graph(
             # Two local concepts of one paper can share a slug, and `KnowledgeGraph` rejects a repeated
             # (paper, concept, relation) edge; both sets of quotes justify the one relation, so they merge.
             paper_edges[key] = _merge_evidence(
-                paper_edges.get(key, ()), _find_resolved_evidence(resolved_evidence, paper_id, edge.evidence)
+                paper_edges.get(key, ()), _find_chunk_evidence(chunk_evidence, paper_id, edge.evidence)
             )
         for relation in extraction.concept_relations:
             source_id = _find_slug(slug_of, paper_id, relation.source_id)
@@ -108,7 +110,7 @@ def build_knowledge_graph(
             relation_key = (source_id, target_id, relation.relation, paper_id)
             concept_edges[relation_key] = _merge_evidence(
                 concept_edges.get(relation_key, ()),
-                _find_resolved_evidence(resolved_evidence, paper_id, relation.evidence),
+                _find_chunk_evidence(chunk_evidence, paper_id, relation.evidence),
             )
 
     paper_concepts = tuple(

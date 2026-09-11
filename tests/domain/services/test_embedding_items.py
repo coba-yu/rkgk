@@ -3,8 +3,8 @@ from rkgk.domain.models.concept_normalization import LocalConceptRef, Normalized
 from rkgk.domain.models.embedding import EmbeddedItem, EmbeddedItemKind
 from rkgk.domain.models.paper_extraction import (
     ExtractedConcept,
-    ExtractedEvidence,
     ExtractedPaperConceptEdge,
+    PageEvidence,
     PaperExtraction,
 )
 from rkgk.domain.models.vocabulary import ConceptType, PaperConceptRelation
@@ -27,7 +27,7 @@ def build_extraction(paper_id: int, summary_ja: str) -> PaperExtraction:
             ExtractedPaperConceptEdge(
                 concept_id="c1",
                 relation=PaperConceptRelation.PROPOSES,
-                evidence=(ExtractedEvidence(page=1, quote="We study"),),
+                evidence=(PageEvidence(page=1, quote="We study"),),
             ),
         ),
     )

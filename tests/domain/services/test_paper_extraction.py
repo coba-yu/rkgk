@@ -4,8 +4,8 @@ from rkgk.domain.models.paper import Page, Paper, PaperMeta, PaperPreprocessInfo
 from rkgk.domain.models.paper_extraction import (
     ExtractedConcept,
     ExtractedConceptEdge,
-    ExtractedEvidence,
     ExtractedPaperConceptEdge,
+    PageEvidence,
     PaperExtraction,
 )
 from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType, PaperConceptRelation
@@ -33,8 +33,8 @@ CONCEPTS = (
 )
 
 
-def evidence(page: int = 1, quote: str = "retrieval-augmented") -> tuple[ExtractedEvidence, ...]:
-    return (ExtractedEvidence(page=page, quote=quote),)
+def evidence(page: int = 1, quote: str = "retrieval-augmented") -> tuple[PageEvidence, ...]:
+    return (PageEvidence(page=page, quote=quote),)
 
 
 def build_result(**overrides: object) -> PaperExtraction:
@@ -111,8 +111,8 @@ def test_every_issue_is_reported_instead_of_only_the_first() -> None:
         concept_id="c1",
         relation=PaperConceptRelation.USES,
         evidence=(
-            ExtractedEvidence(page=9, quote="pipeline"),
-            ExtractedEvidence(page=1, quote="dense retrieval"),
+            PageEvidence(page=9, quote="pipeline"),
+            PageEvidence(page=1, quote="dense retrieval"),
         ),
     )
     issues = check_extraction_against_paper(build_result(paper_id=2, paper_concepts=(edge,)), PAPER)

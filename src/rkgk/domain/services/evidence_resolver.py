@@ -9,8 +9,8 @@ It reads the extraction and chunk models and owns no data.
 from collections.abc import Sequence
 
 from rkgk.domain.models.chunk import Chunk
-from rkgk.domain.models.graph import Evidence, EvidenceResolutionError, UnresolvedEvidence
-from rkgk.domain.models.paper_extraction import ExtractedEvidence, PaperExtraction
+from rkgk.domain.models.graph import ChunkEvidence, EvidenceResolutionError, UnresolvedEvidence
+from rkgk.domain.models.paper_extraction import PageEvidence, PaperExtraction
 from rkgk.domain.services.paper_extraction import normalize_whitespace
 
 
@@ -31,11 +31,11 @@ def find_chunk(page: int, quote: str, chunks: Sequence[Chunk]) -> Chunk | None:
 
 def resolve_extraction_evidence(
     extraction: PaperExtraction, chunks: Sequence[Chunk]
-) -> dict[ExtractedEvidence, Evidence]:
-    """Attach a chunk id to every piece of evidence in the extraction, keyed by the evidence it came from.
+) -> dict[PageEvidence, ChunkEvidence]:
+    """Turn every page evidence of the extraction into chunk evidence, keyed by the page evidence it came from.
 
     The result is a mapping rather than a rebuilt extraction, so the same quote cited on several edges is
-    resolved once and every edge looks up the same answer.
+    resolved once and every edge looks up the same chunk evidence.
     Every unresolved quote is collected before raising, because a quote fails here only when it straddles a
     chunk boundary, and whoever fixes the extraction needs the whole list.
     """
@@ -43,8 +43,8 @@ def resolve_extraction_evidence(
     if foreign:
         raise ValueError(f"chunks {foreign} do not belong to paper {extraction.paper_id}")
 
-    resolved: dict[ExtractedEvidence, Evidence] = {}
-    unresolved: dict[ExtractedEvidence, UnresolvedEvidence] = {}
+    resolved: dict[PageEvidence, ChunkEvidence] = {}
+    unresolved: dict[PageEvidence, UnresolvedEvidence] = {}
     edges = [*extraction.paper_concepts, *extraction.concept_relations]
     for item in (item for edge in edges for item in edge.evidence):
         if item in resolved or item in unresolved:
@@ -53,7 +53,7 @@ def resolve_extraction_evidence(
         if chunk is None:
             unresolved[item] = UnresolvedEvidence(paper_id=extraction.paper_id, page=item.page, quote=item.quote)
             continue
-        resolved[item] = Evidence(page=item.page, quote=item.quote, chunk_id=chunk.id)
+        resolved[item] = ChunkEvidence(page=item.page, quote=item.quote, chunk_id=chunk.id)
     if unresolved:
         raise EvidenceResolutionError(tuple(unresolved.values()))
     return resolved

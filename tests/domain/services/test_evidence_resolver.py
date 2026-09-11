@@ -1,12 +1,12 @@
 import pytest
 
 from rkgk.domain.models.chunk import Chunk
-from rkgk.domain.models.graph import Evidence, EvidenceResolutionError
+from rkgk.domain.models.graph import ChunkEvidence, EvidenceResolutionError
 from rkgk.domain.models.paper_extraction import (
     ExtractedConcept,
     ExtractedConceptEdge,
-    ExtractedEvidence,
     ExtractedPaperConceptEdge,
+    PageEvidence,
     PaperExtraction,
 )
 from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType, PaperConceptRelation
@@ -27,7 +27,7 @@ CONCEPTS = (
 )
 
 
-def paper_edge(*evidence: ExtractedEvidence, concept_id: str = "c1") -> ExtractedPaperConceptEdge:
+def paper_edge(*evidence: PageEvidence, concept_id: str = "c1") -> ExtractedPaperConceptEdge:
     return ExtractedPaperConceptEdge(concept_id=concept_id, relation=PaperConceptRelation.PROPOSES, evidence=evidence)
 
 
@@ -64,16 +64,16 @@ def test_find_chunk_returns_none_for_a_quote_that_straddles_two_chunks() -> None
     assert find_chunk(1, "generation pipeline. It helps", CHUNKS) is None
 
 
-def test_resolved_evidence_keeps_page_and_quote_and_adds_the_chunk_id() -> None:
-    item = ExtractedEvidence(page=1, quote="choose the next paper")
+def test_chunk_evidence_keeps_page_and_quote_and_adds_the_chunk_id() -> None:
+    item = PageEvidence(page=1, quote="choose the next paper")
 
     resolved = resolve_extraction_evidence(build_extraction(paper_edge(item)), CHUNKS)
 
-    assert resolved == {item: Evidence(page=1, quote="choose the next paper", chunk_id="1:1")}
+    assert resolved == {item: ChunkEvidence(page=1, quote="choose the next paper", chunk_id="1:1")}
 
 
 def test_evidence_of_concept_relations_is_resolved_too() -> None:
-    item = ExtractedEvidence(page=2, quote="splits every paper into chunks")
+    item = PageEvidence(page=2, quote="splits every paper into chunks")
     relation = ExtractedConceptEdge(
         source_id="c1", target_id="c2", relation=ConceptRelationType.USED_FOR, evidence=(item,)
     )
@@ -84,7 +84,7 @@ def test_evidence_of_concept_relations_is_resolved_too() -> None:
 
 
 def test_the_same_quote_on_two_edges_is_resolved_to_one_entry() -> None:
-    item = ExtractedEvidence(page=1, quote="a reader")
+    item = PageEvidence(page=1, quote="a reader")
 
     resolved = resolve_extraction_evidence(
         build_extraction(paper_edge(item), paper_edge(item, concept_id="c2")), CHUNKS
@@ -94,7 +94,7 @@ def test_the_same_quote_on_two_edges_is_resolved_to_one_entry() -> None:
 
 
 def test_a_quote_that_straddles_two_chunks_is_reported_with_paper_page_and_quote() -> None:
-    item = ExtractedEvidence(page=1, quote="generation pipeline. It helps")
+    item = PageEvidence(page=1, quote="generation pipeline. It helps")
 
     with pytest.raises(EvidenceResolutionError) as raised:
         resolve_extraction_evidence(build_extraction(paper_edge(item)), CHUNKS)
@@ -106,9 +106,9 @@ def test_a_quote_that_straddles_two_chunks_is_reported_with_paper_page_and_quote
 
 
 def test_every_unresolved_quote_is_reported_once_instead_of_only_the_first() -> None:
-    first = ExtractedEvidence(page=1, quote="generation pipeline. It helps")
-    second = ExtractedEvidence(page=2, quote="not in the paper")
-    found = ExtractedEvidence(page=2, quote="into chunks")
+    first = PageEvidence(page=1, quote="generation pipeline. It helps")
+    second = PageEvidence(page=2, quote="not in the paper")
+    found = PageEvidence(page=2, quote="into chunks")
 
     with pytest.raises(EvidenceResolutionError) as raised:
         resolve_extraction_evidence(
@@ -119,7 +119,7 @@ def test_every_unresolved_quote_is_reported_once_instead_of_only_the_first() -> 
 
 
 def test_chunks_of_another_paper_are_rejected() -> None:
-    item = ExtractedEvidence(page=1, quote="a reader")
+    item = PageEvidence(page=1, quote="a reader")
     foreign = Chunk.create(paper_id=2, idx=0, page_start=1, page_end=1, text="a reader")
 
     with pytest.raises(ValueError, match=r"\['2:0'\] do not belong to paper 1"):

@@ -5,8 +5,8 @@ import pytest
 
 from rkgk.domain.models.paper_extraction import (
     ExtractedConcept,
-    ExtractedEvidence,
     ExtractedPaperConceptEdge,
+    PageEvidence,
     PaperExtraction,
 )
 from rkgk.domain.models.vocabulary import ConceptType, PaperConceptRelation
@@ -26,7 +26,7 @@ RESULT = PaperExtraction(
         ExtractedPaperConceptEdge(
             concept_id="c1",
             relation=PaperConceptRelation.PROPOSES,
-            evidence=(ExtractedEvidence(page=1, quote="retrieval-augmented generation"),),
+            evidence=(PageEvidence(page=1, quote="retrieval-augmented generation"),),
         ),
     ),
 )

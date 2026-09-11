@@ -1,6 +1,7 @@
 """Nodes and edges of the knowledge graph.
 
 A paper-origin edge carries the evidence, quotes from the paper, that justifies it.
+Evidence here always points at the chunk that holds the quote, so an answer can show the retrieved chunk.
 A general-knowledge edge carries a rationale instead, because no single paper backs it.
 `KnowledgeGraph` gathers the nodes and edges of every paper into the one graph the index stores.
 """
@@ -10,13 +11,20 @@ from typing import Annotated, Self
 from pydantic import Field, field_validator, model_validator
 
 from rkgk.domain.models.base import Entity, Slug
+from rkgk.domain.models.chunk import CHUNK_ID_PATTERN
 from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType, Origin, PaperConceptRelation
 
 
-class Evidence(Entity):
+class ChunkEvidence(Entity):
+    """A quote and the chunk that holds it, so an answer can show the chunk retrieval returns.
+
+    The build resolves the page evidence of an extraction to a chunk before an edge carries it, so the chunk id
+    is required: an edge of the graph always points at the chunk that holds the quote.
+    """
+
     page: int = Field(ge=1)
     quote: str
-    chunk_id: str | None = None
+    chunk_id: str = Field(pattern=CHUNK_ID_PATTERN)
 
     @field_validator("quote")
     @classmethod
@@ -65,7 +73,7 @@ class PaperConceptEdge(Entity):
     paper_id: int = Field(ge=1)
     concept_id: Slug
     relation: PaperConceptRelation
-    evidence: tuple[Evidence, ...] = Field(min_length=1)
+    evidence: tuple[ChunkEvidence, ...] = Field(min_length=1)
 
 
 class ConceptEdge(Entity):
@@ -80,7 +88,7 @@ class ConceptEdge(Entity):
     relation: ConceptRelationType
     origin: Origin
     paper_id: int | None = Field(default=None, ge=1)
-    evidence: tuple[Evidence, ...] = ()
+    evidence: tuple[ChunkEvidence, ...] = ()
     rationale: str | None = None
 
     @model_validator(mode="after")

@@ -6,23 +6,23 @@ from rkgk.domain.models.concept_normalization import (
     LocalConceptRef,
     NormalizedConcept,
 )
-from rkgk.domain.models.graph import Evidence, KnowledgeGraph
+from rkgk.domain.models.graph import ChunkEvidence, KnowledgeGraph
 from rkgk.domain.models.paper_extraction import (
     ExtractedConcept,
     ExtractedConceptEdge,
-    ExtractedEvidence,
     ExtractedPaperConceptEdge,
+    PageEvidence,
     PaperExtraction,
 )
 from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType, Origin, PaperConceptRelation
 from rkgk.domain.services.graph_builder import build_knowledge_graph, build_paper_node_id, to_networkx
 
-P1_PROPOSES = ExtractedEvidence(page=1, quote="we propose Graph RAG")
-P1_USES = ExtractedEvidence(page=2, quote="Graph RAG runs on the index we build")
-P1_ADDRESSES = ExtractedEvidence(page=1, quote="answers keep hallucinating")
-P1_RELATION = ExtractedEvidence(page=3, quote="Graph RAG is meant to ground the answer")
-P2_USES = ExtractedEvidence(page=1, quote="we use GraphRAG as our retriever")
-P2_RELATION = ExtractedEvidence(page=2, quote="GraphRAG is a retrieval augmented generation system")
+P1_PROPOSES = PageEvidence(page=1, quote="we propose Graph RAG")
+P1_USES = PageEvidence(page=2, quote="Graph RAG runs on the index we build")
+P1_ADDRESSES = PageEvidence(page=1, quote="answers keep hallucinating")
+P1_RELATION = PageEvidence(page=3, quote="Graph RAG is meant to ground the answer")
+P2_USES = PageEvidence(page=1, quote="we use GraphRAG as our retriever")
+P2_RELATION = PageEvidence(page=2, quote="GraphRAG is a retrieval augmented generation system")
 
 EXTRACTION_1 = PaperExtraction(
     schema_version=1,
@@ -96,29 +96,29 @@ NORMALIZATION = ConceptNormalization(
 )
 
 
-def resolve(paper_id: int, *items: ExtractedEvidence) -> dict[ExtractedEvidence, Evidence]:
+def resolve(paper_id: int, *items: PageEvidence) -> dict[PageEvidence, ChunkEvidence]:
     """Stand in for resolve_extraction_evidence: give every quote of a paper a chunk id of its own."""
     return {
-        item: Evidence(page=item.page, quote=item.quote, chunk_id=f"{paper_id}:{index}")
+        item: ChunkEvidence(page=item.page, quote=item.quote, chunk_id=f"{paper_id}:{index}")
         for index, item in enumerate(items)
     }
 
 
-RESOLVED = {
+CHUNK_EVIDENCE = {
     1: resolve(1, P1_PROPOSES, P1_USES, P1_ADDRESSES, P1_RELATION),
     2: resolve(2, P2_USES, P2_RELATION),
 }
 
 
 def build() -> KnowledgeGraph:
-    return build_knowledge_graph((EXTRACTION_1, EXTRACTION_2), NORMALIZATION, RESOLVED)
+    return build_knowledge_graph((EXTRACTION_1, EXTRACTION_2), NORMALIZATION, CHUNK_EVIDENCE)
 
 
-MERGED_FIRST = ExtractedEvidence(page=1, quote="we propose Graph RAG")
-MERGED_SHARED = ExtractedEvidence(page=1, quote="the contribution of this paper")
-MERGED_SECOND = ExtractedEvidence(page=2, quote="GraphRAG, as we call it")
-MERGED_RELATION_FIRST = ExtractedEvidence(page=3, quote="Graph RAG grounds the answer")
-MERGED_RELATION_SECOND = ExtractedEvidence(page=3, quote="GraphRAG grounds the answer")
+MERGED_FIRST = PageEvidence(page=1, quote="we propose Graph RAG")
+MERGED_SHARED = PageEvidence(page=1, quote="the contribution of this paper")
+MERGED_SECOND = PageEvidence(page=2, quote="GraphRAG, as we call it")
+MERGED_RELATION_FIRST = PageEvidence(page=3, quote="Graph RAG grounds the answer")
+MERGED_RELATION_SECOND = PageEvidence(page=3, quote="GraphRAG grounds the answer")
 
 MERGED_CONCEPTS = (
     ExtractedConcept(local_id="c1", name="Graph RAG", type=ConceptType.METHOD),
@@ -184,13 +184,13 @@ def test_local_concept_ids_are_replaced_by_the_slug_on_concept_relations() -> No
     ]
 
 
-def test_paper_edge_evidence_carries_the_chunk_id_of_the_resolved_evidence() -> None:
+def test_paper_edge_evidence_carries_the_chunk_id_of_the_chunk_evidence() -> None:
     graph = build()
 
-    assert graph.paper_concepts[0].evidence == (Evidence(page=1, quote="we propose Graph RAG", chunk_id="1:0"),)
+    assert graph.paper_concepts[0].evidence == (ChunkEvidence(page=1, quote="we propose Graph RAG", chunk_id="1:0"),)
 
 
-def test_concept_relation_evidence_carries_the_chunk_id_of_the_resolved_evidence() -> None:
+def test_concept_relation_evidence_carries_the_chunk_id_of_the_chunk_evidence() -> None:
     graph = build()
 
     assert [item.chunk_id for item in graph.concept_relations[1].evidence] == ["2:1"]
@@ -231,7 +231,7 @@ def test_document_frequency_is_the_share_of_the_papers_of_the_graph() -> None:
 
 
 def test_paper_ids_follow_the_order_of_the_extractions() -> None:
-    assert build_knowledge_graph((EXTRACTION_2, EXTRACTION_1), NORMALIZATION, RESOLVED).paper_ids == (2, 1)
+    assert build_knowledge_graph((EXTRACTION_2, EXTRACTION_1), NORMALIZATION, CHUNK_EVIDENCE).paper_ids == (2, 1)
 
 
 def test_concepts_follow_the_order_of_the_normalization() -> None:
@@ -268,9 +268,9 @@ def test_paper_edges_of_merged_concepts_collapse_into_one_edge_with_the_union_of
             ),
         )
     )
-    resolved = {3: resolve(3, MERGED_FIRST, MERGED_SHARED, MERGED_SECOND)}
+    chunk_evidence = {3: resolve(3, MERGED_FIRST, MERGED_SHARED, MERGED_SECOND)}
 
-    graph = build_knowledge_graph((extraction,), MERGED_NORMALIZATION, resolved)
+    graph = build_knowledge_graph((extraction,), MERGED_NORMALIZATION, chunk_evidence)
 
     assert len(graph.paper_concepts) == 1
     assert [item.chunk_id for item in graph.paper_concepts[0].evidence] == ["3:0", "3:1", "3:2"]
@@ -293,9 +293,9 @@ def test_concept_relations_of_merged_concepts_collapse_into_one_edge_with_the_un
             ),
         )
     )
-    resolved = {3: resolve(3, MERGED_RELATION_FIRST, MERGED_RELATION_SECOND)}
+    chunk_evidence = {3: resolve(3, MERGED_RELATION_FIRST, MERGED_RELATION_SECOND)}
 
-    graph = build_knowledge_graph((extraction,), MERGED_NORMALIZATION, resolved)
+    graph = build_knowledge_graph((extraction,), MERGED_NORMALIZATION, chunk_evidence)
 
     assert len(graph.concept_relations) == 1
     assert [item.chunk_id for item in graph.concept_relations[0].evidence] == ["3:0", "3:1"]
@@ -332,19 +332,19 @@ def test_a_local_id_that_no_normalized_concept_merged_is_rejected() -> None:
     )
 
     with pytest.raises(ValueError, match="paper 1 concept 'c2' is in no normalized concept"):
-        build_knowledge_graph((EXTRACTION_1,), normalization, RESOLVED)
+        build_knowledge_graph((EXTRACTION_1,), normalization, CHUNK_EVIDENCE)
 
 
-def test_evidence_missing_from_the_resolution_of_its_paper_is_rejected() -> None:
-    resolved = {1: resolve(1, P1_PROPOSES, P1_USES, P1_ADDRESSES), 2: RESOLVED[2]}
+def test_a_quote_missing_from_the_chunk_evidence_of_its_paper_is_rejected() -> None:
+    chunk_evidence = {1: resolve(1, P1_PROPOSES, P1_USES, P1_ADDRESSES), 2: CHUNK_EVIDENCE[2]}
 
     with pytest.raises(ValueError, match=r"paper 1 page 3: quote 'Graph RAG is meant to ground the answer'"):
-        build_knowledge_graph((EXTRACTION_1, EXTRACTION_2), NORMALIZATION, resolved)
+        build_knowledge_graph((EXTRACTION_1, EXTRACTION_2), NORMALIZATION, chunk_evidence)
 
 
-def test_a_paper_missing_from_the_resolution_is_rejected() -> None:
+def test_a_paper_missing_from_the_chunk_evidence_is_rejected() -> None:
     with pytest.raises(ValueError, match=r"paper 2 page 1: quote 'we use GraphRAG as our retriever'"):
-        build_knowledge_graph((EXTRACTION_1, EXTRACTION_2), NORMALIZATION, {1: RESOLVED[1]})
+        build_knowledge_graph((EXTRACTION_1, EXTRACTION_2), NORMALIZATION, {1: CHUNK_EVIDENCE[1]})
 
 
 def test_to_networkx_gives_every_paper_a_node_of_its_own() -> None:
@@ -371,7 +371,7 @@ def test_to_networkx_keys_a_paper_edge_by_its_relation_and_keeps_the_evidence() 
 
     assert view.get_edge_data("paper:1", "hallucination", "addresses") == {
         "relation": PaperConceptRelation.ADDRESSES,
-        "evidence": (Evidence(page=1, quote="answers keep hallucinating", chunk_id="1:2"),),
+        "evidence": (ChunkEvidence(page=1, quote="answers keep hallucinating", chunk_id="1:2"),),
     }
 
 
@@ -382,7 +382,7 @@ def test_to_networkx_keys_a_paper_origin_relation_by_relation_origin_and_paper()
         "relation": ConceptRelationType.USED_FOR,
         "origin": Origin.PAPER,
         "paper_id": 1,
-        "evidence": (Evidence(page=3, quote="Graph RAG is meant to ground the answer", chunk_id="1:3"),),
+        "evidence": (ChunkEvidence(page=3, quote="Graph RAG is meant to ground the answer", chunk_id="1:3"),),
         "rationale": None,
     }
 
