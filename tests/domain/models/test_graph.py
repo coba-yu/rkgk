@@ -19,11 +19,11 @@ def test_evidence_accepts_optional_chunk_id() -> None:
 @pytest.mark.parametrize("concept_id", ["Graph-RAG", "graph-rag-", "-graph-rag", "graph rag", "graph--rag", ""])
 def test_concept_rejects_invalid_slug(concept_id: str) -> None:
     with pytest.raises(ValidationError):
-        Concept(id=concept_id, canonical_name="Graph RAG", type=ConceptType.METHOD)
+        Concept(id=concept_id, canonical_name="Graph RAG", type=ConceptType.METHOD, paper_count=1)
 
 
 def test_concept_accepts_slug_and_defaults_to_no_aliases() -> None:
-    concept = Concept(id="graph-rag2", canonical_name="Graph RAG", type=ConceptType.METHOD)
+    concept = Concept(id="graph-rag2", canonical_name="Graph RAG", type=ConceptType.METHOD, paper_count=1)
     assert concept.aliases == ()
     assert concept.description == ""
 
@@ -117,6 +117,7 @@ def test_concept_relation_accepts_general_knowledge_without_paper_id_or_evidence
         target_id="rag",
         relation=ConceptRelationType.IS_A,
         origin=Origin.GENERAL_KNOWLEDGE,
+        rationale="Graph RAG は RAG の検索段階をグラフ探索に置き換えたものである。",
     )
     assert relation.paper_id is None
     assert relation.evidence == ()
