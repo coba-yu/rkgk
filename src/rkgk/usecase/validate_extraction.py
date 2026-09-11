@@ -3,9 +3,9 @@
 from pydantic import ValidationError
 
 from rkgk.domain.models.paper_extraction import (
-    ExtractionValidationError,
     PaperExtraction,
     PaperExtractionIssue,
+    PaperExtractionValidationError,
     check_extraction_against_paper,
 )
 from rkgk.domain.repositories.paper import PaperRepository
@@ -34,8 +34,8 @@ class ValidateExtractionUseCase:
         try:
             result = PaperExtraction.model_validate(payload)
         except ValidationError as error:
-            raise ExtractionValidationError(_build_issues(error)) from error
+            raise PaperExtractionValidationError(_build_issues(error)) from error
         issues = check_extraction_against_paper(result, self._paper_repository.find(paper_id))
         if issues:
-            raise ExtractionValidationError(issues)
+            raise PaperExtractionValidationError(issues)
         return result

@@ -1,6 +1,6 @@
 import pytest
 
-from rkgk.domain.models.paper_extraction import ExtractionValidationError
+from rkgk.domain.models.paper_extraction import PaperExtractionValidationError
 from rkgk.domain.repositories.paper import PaperNotFoundError
 from rkgk.usecase.save_extraction import SaveExtractionUseCase
 from tests.usecase.fakes import FakeExtractionRepository, FakePaperRepository
@@ -21,7 +21,7 @@ def test_an_invalid_payload_is_not_stored() -> None:
     extraction_repository = FakeExtractionRepository()
     payload = build_payload()
     payload["paper_concepts"][0]["evidence"][0]["quote"] = "a sentence the paper never wrote"
-    with pytest.raises(ExtractionValidationError):
+    with pytest.raises(PaperExtractionValidationError):
         build_use_case(extraction_repository).execute(1, payload)
     assert extraction_repository.saved == []
 

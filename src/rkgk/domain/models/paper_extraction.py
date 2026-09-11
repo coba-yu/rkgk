@@ -134,7 +134,7 @@ class PaperExtractionIssue(Entity):
     message: str
 
 
-class ExtractionValidationError(Exception):
+class PaperExtractionValidationError(Exception):
     """Raised when an extraction does not fit the schema or does not match the paper it claims to describe."""
 
     def __init__(self, issues: tuple[PaperExtractionIssue, ...]) -> None:

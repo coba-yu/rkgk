@@ -12,9 +12,9 @@ from pathlib import Path
 from rkgk.cli._output import EXIT_ERROR, EXIT_INVALID, EXIT_OK, print_json
 from rkgk.domain.agents import StructuredOutputAgentError
 from rkgk.domain.models.paper_extraction import (
-    ExtractionValidationError,
     PaperExtraction,
     PaperExtractionIssue,
+    PaperExtractionValidationError,
     build_extraction_schema,
 )
 from rkgk.domain.repositories.extraction import ExtractionRepositoryError
@@ -71,7 +71,7 @@ def _run_run(args: argparse.Namespace) -> int:
     )
     try:
         outcome = use_case.execute(args.paper_id)
-    except ExtractionValidationError as error:
+    except PaperExtractionValidationError as error:
         print_json(
             {
                 "status": "invalid",
@@ -109,7 +109,7 @@ def _run(args: argparse.Namespace, execute: Callable[[int, object], PaperExtract
     try:
         payload = json.loads(args.json_path.read_text(encoding="utf-8"))
         result = execute(args.paper_id, payload)
-    except ExtractionValidationError as error:
+    except PaperExtractionValidationError as error:
         print_json({"status": "invalid", "issues": [_render_issue(issue) for issue in error.issues]})
         return EXIT_INVALID
     except (

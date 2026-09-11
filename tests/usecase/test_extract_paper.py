@@ -1,7 +1,7 @@
 import pytest
 
 from rkgk.domain.agents import StructuredOutputAgent, StructuredOutputAgentError
-from rkgk.domain.models.paper_extraction import ExtractionValidationError
+from rkgk.domain.models.paper_extraction import PaperExtractionValidationError
 from rkgk.domain.repositories.paper import PaperNotFoundError
 from rkgk.usecase.extract_paper import ExtractPaperUseCase
 from tests.usecase.fakes import FakeExtractionRepository, FakePaperRepository, build_paper
@@ -83,14 +83,14 @@ def test_the_retry_shows_the_agent_its_rejected_answer_and_the_issues() -> None:
 def test_the_last_rejection_is_raised_and_nothing_is_saved() -> None:
     saved = FakeExtractionRepository()
     agent = FakeAgent(INVALID_PAYLOAD, INVALID_PAYLOAD)
-    with pytest.raises(ExtractionValidationError, match="is not found in the text of page 1"):
+    with pytest.raises(PaperExtractionValidationError, match="is not found in the text of page 1"):
         build_use_case(agent, saved, max_attempts=2).execute(1)
     assert saved.saved == []
 
 
 def test_the_agent_is_asked_only_as_often_as_the_attempts_allow() -> None:
     agent = FakeAgent(INVALID_PAYLOAD, INVALID_PAYLOAD, VALID_PAYLOAD)
-    with pytest.raises(ExtractionValidationError):
+    with pytest.raises(PaperExtractionValidationError):
         build_use_case(agent, FakeExtractionRepository(), max_attempts=2).execute(1)
     assert len(agent.prompts) == 2
 

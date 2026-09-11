@@ -2,9 +2,9 @@
 
 from rkgk.domain.agents import StructuredOutputAgent
 from rkgk.domain.models.paper_extraction import (
-    ExtractionValidationError,
     PaperExtractionIssue,
     PaperExtractionRun,
+    PaperExtractionValidationError,
     build_extraction_prompt,
     build_extraction_schema,
 )
@@ -39,7 +39,7 @@ class ExtractPaperUseCase:
             payload = self._agent.answer(build_extraction_prompt(paper, previous, issues), schema)
             try:
                 result = self._validate.execute(paper_id, payload)
-            except ExtractionValidationError as error:
+            except PaperExtractionValidationError as error:
                 # The agent sees its own answer and what was wrong with it, so a retry corrects rather than reruns.
                 if attempts >= self._max_attempts:
                     raise
