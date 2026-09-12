@@ -61,7 +61,7 @@ def _run(args: argparse.Namespace) -> int:
         max_tokens=args.max_tokens,
     )
     try:
-        outcome = use_case.execute()
+        result = use_case.execute()
     except PaperExtractionMismatchError as error:
         print_json(
             {
@@ -107,7 +107,7 @@ def _run(args: argparse.Namespace) -> int:
         print_json({"status": "error", "message": str(error)})
         return EXIT_ERROR
     payload: dict[str, object] = {"status": "ok"}
-    payload.update(_render_result(outcome))
+    payload.update(_render_result(result))
     payload["paths"] = [str(path) for path in index_repository.paths()]
     print_json(payload)
     return EXIT_OK
@@ -121,16 +121,16 @@ def _render_normalization_issue(issue: ConceptNormalizationIssue) -> dict[str, s
     return {"path": issue.path, "message": issue.message}
 
 
-def _render_result(outcome: IndexBuildRun) -> dict[str, object]:
+def _render_result(result: IndexBuildRun) -> dict[str, object]:
     return {
-        "papers": len(outcome.manifest.paper_ids),
-        "chunks": len(outcome.chunks),
-        "embedded_items": len(outcome.embeddings.items),
-        "embedding_model": outcome.manifest.embedding_model,
-        "embedding_dimension": outcome.manifest.embedding_dimension,
-        "concepts": len(outcome.graph.concepts),
-        "paper_concepts": len(outcome.graph.paper_concepts),
-        "concept_relations": len(outcome.graph.concept_relations),
+        "papers": len(result.manifest.paper_ids),
+        "chunks": len(result.chunks),
+        "embedded_items": len(result.embeddings.items),
+        "embedding_model": result.manifest.embedding_model,
+        "embedding_dimension": result.manifest.embedding_dimension,
+        "concepts": len(result.graph.concepts),
+        "paper_concepts": len(result.graph.paper_concepts),
+        "concept_relations": len(result.graph.concept_relations),
     }
 
 
