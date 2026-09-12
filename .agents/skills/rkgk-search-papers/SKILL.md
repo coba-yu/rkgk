@@ -37,8 +37,8 @@ uv run --extra embedding search "検索拡張生成の評価" "retrieval-augment
 | オプション | 意味 | 既定値 |
 | --- | --- | --- |
 | `--data-dir` | `papers/` と `index/` を持つディレクトリ | `data` |
-| `--embedder` | `qwen3` か `fake`。`fake` はモデルを読まずに配線だけ確かめる | `qwen3` |
-| `--embedding-model` | `qwen3` が読むモデル名。省略すると index の manifest の `embedding_model` | manifest の値 |
+| `--embedder` | 埋め込みの実装。`qwen3` のまま使う | `qwen3` |
+| `--embedding-model` | 読み込むモデル名。省略すると index の manifest の `embedding_model` | manifest の値 |
 | `--top-k` | クエリごとに取る埋め込みアイテムの件数 | 10 |
 | `--max-hops` | 概念間関係をたどる回数。0 なら概念を共有する論文だけ | 1 |
 | `--max-graph-candidates` | グラフ経由で加える論文の上限 | 10 |
@@ -53,7 +53,7 @@ uv run --extra embedding search "検索拡張生成の評価" "retrieval-augment
 | 終了コード | `status` | 対応 |
 | --- | --- | --- |
 | 0 | `ok` | 手順 4 へ進む |
-| 1 | `invalid` | `reason` が `embedding_model_mismatch` なら、`index_model` に合う embedder を選び直す。`index_model` が `fake-8` なら `--embedder fake`、それ以外なら `--embedder qwen3` にし、`--embedding-model` は省略して manifest に任せる。`--embedder fake` のときは `--embedding-model` は無視されるので、それを変えても直らない。それでも合わなければ index の再構築を案内する |
+| 1 | `invalid` | `reason` が `embedding_model_mismatch` なら、`--embedding-model` を省略して manifest の `index_model` に任せて再実行する。それでも合わなければ index の再構築を案内する |
 | 2 | `error` | `message` をそのまま伝える。index が無い、manifest の `schema_version` が非対応、モデルが読めない、クエリが空か重複、のいずれか |
 
 ### 4. JSON を読む
