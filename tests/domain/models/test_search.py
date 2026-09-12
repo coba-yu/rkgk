@@ -566,6 +566,10 @@ def test_paper_candidate_rejects_blank_s3_uri() -> None:
         build_paper_candidate(s3_uri="")
 
 
+def test_paper_candidate_accepts_a_paper_whose_original_is_not_located() -> None:
+    assert build_paper_candidate(s3_uri=None).s3_uri is None
+
+
 def test_paper_candidate_rejects_blank_summary_ja() -> None:
     with pytest.raises(ValidationError):
         build_paper_candidate(summary_ja="")
