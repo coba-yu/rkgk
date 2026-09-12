@@ -59,7 +59,6 @@ from rkgk.domain.models.paper_extraction import (
     build_paper_extraction_schema,
 )
 from rkgk.domain.models.search import (
-    DEFAULT_TOP_K,
     ConceptHop,
     PaperCandidate,
     PaperHits,
@@ -129,7 +128,6 @@ __all__ = [
     "CHUNK_ID_PATTERN",
     "CONCEPT_NORMALIZATION_SCHEMA_VERSION",
     "DEFAULT_MAX_TOKENS",
-    "DEFAULT_TOP_K",
     "DOMAIN_MODEL_VERSION",
     "EXTRACTION_SCHEMA_VERSION",
     "INDEX_SCHEMA_VERSION",

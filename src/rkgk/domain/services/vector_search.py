@@ -13,7 +13,7 @@ from numpy.typing import NDArray
 
 from rkgk.domain.models.embedding import EmbeddedItem, EmbeddedItemKind, EmbeddingTable
 from rkgk.domain.models.graph import KnowledgeGraph
-from rkgk.domain.models.search import DEFAULT_TOP_K, PaperHits, SearchHit
+from rkgk.domain.models.search import PaperHits, SearchHit
 from rkgk.domain.models.vocabulary import traversable_paper_relations
 
 
@@ -41,7 +41,7 @@ def search_vectors(
     queries: Sequence[str],
     query_vectors: NDArray[np.float32],
     graph: KnowledgeGraph,
-    top_k: int = DEFAULT_TOP_K,
+    top_k: int,
 ) -> tuple[PaperHits, ...]:
     """Take the `top_k` items of each query, turn them into hits, and group the hits by paper.
 

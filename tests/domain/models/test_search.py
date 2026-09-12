@@ -3,7 +3,6 @@ from pydantic import ValidationError
 
 from rkgk.domain.models.embedding import EmbeddedItemKind
 from rkgk.domain.models.search import (
-    DEFAULT_TOP_K,
     ConceptHop,
     PaperCandidate,
     PaperHits,
@@ -116,8 +115,8 @@ def build_full_result() -> SearchResult:
 # SearchConfig
 
 
-def test_search_config_defaults_top_k_to_the_module_default() -> None:
-    assert build_config().top_k == DEFAULT_TOP_K
+def test_search_config_defaults_top_k_to_ten() -> None:
+    assert build_config().top_k == 10
 
 
 def test_search_config_rejects_a_non_positive_top_k() -> None:

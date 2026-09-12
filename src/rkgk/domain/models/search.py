@@ -16,8 +16,6 @@ from rkgk.domain.models.base import Entity, Slug
 from rkgk.domain.models.embedding import EmbeddedItemKind
 from rkgk.domain.models.vocabulary import ConceptRelationType, Origin, PaperConceptRelation
 
-DEFAULT_TOP_K = 10
-
 
 class SearchConfig(Entity):
     """The settings one search ran with, kept in the result so a reader knows how the candidates were chosen.
@@ -25,7 +23,7 @@ class SearchConfig(Entity):
     Only the vector search setting exists yet; the traversal settings join it when traversal is implemented.
     """
 
-    top_k: int = Field(default=DEFAULT_TOP_K, ge=1)
+    top_k: int = Field(default=10, ge=1)
 
 
 class SearchHit(Entity):

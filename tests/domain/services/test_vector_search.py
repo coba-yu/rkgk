@@ -164,22 +164,22 @@ def test_a_top_k_larger_than_the_table_returns_every_item_that_belongs_to_a_pape
 
 def test_no_query_is_rejected() -> None:
     with pytest.raises(ValueError, match="queries must not be empty"):
-        search_vectors(TABLE, (), np.empty((0, 4), dtype=np.float32), GRAPH)
+        search_vectors(TABLE, (), np.empty((0, 4), dtype=np.float32), GRAPH, top_k=1)
 
 
 def test_a_row_count_that_does_not_match_the_queries_is_rejected() -> None:
     with pytest.raises(ValueError, match="1 rows for 2 queries"):
-        search_vectors(TABLE, ("検索", "retrieval"), np.zeros((1, 4), dtype=np.float32), GRAPH)
+        search_vectors(TABLE, ("検索", "retrieval"), np.zeros((1, 4), dtype=np.float32), GRAPH, top_k=1)
 
 
 def test_a_column_count_that_does_not_match_the_table_is_rejected() -> None:
     with pytest.raises(ValueError, match="3 columns for a table of dimension 4"):
-        search_vectors(TABLE, ("検索",), np.zeros((1, 3), dtype=np.float32), GRAPH)
+        search_vectors(TABLE, ("検索",), np.zeros((1, 3), dtype=np.float32), GRAPH, top_k=1)
 
 
 def test_query_vectors_that_are_not_two_dimensional_are_rejected() -> None:
     with pytest.raises(ValueError, match="must be two-dimensional"):
-        search_vectors(TABLE, ("検索",), np.zeros(4, dtype=np.float32), GRAPH)
+        search_vectors(TABLE, ("検索",), np.zeros(4, dtype=np.float32), GRAPH, top_k=1)
 
 
 def test_a_top_k_below_one_is_rejected() -> None:
