@@ -59,17 +59,17 @@ def build_use_case(
 
 def test_an_answer_that_passes_validation_is_saved_after_one_attempt() -> None:
     saved = FakePaperExtractionRepository()
-    outcome = build_use_case(FakeAgent(VALID_PAYLOAD), saved).execute(1)
-    assert outcome.attempts == 1
-    assert saved.saved == [outcome.extraction]
+    result = build_use_case(FakeAgent(VALID_PAYLOAD), saved).execute(1)
+    assert result.attempts == 1
+    assert saved.saved == [result.extraction]
 
 
 def test_a_rejected_answer_is_retried_and_the_attempts_are_counted() -> None:
     saved = FakePaperExtractionRepository()
     agent = FakeAgent(INVALID_PAYLOAD, VALID_PAYLOAD)
-    outcome = build_use_case(agent, saved).execute(1)
-    assert outcome.attempts == 2
-    assert saved.saved == [outcome.extraction]
+    result = build_use_case(agent, saved).execute(1)
+    assert result.attempts == 2
+    assert saved.saved == [result.extraction]
 
 
 def test_the_retry_shows_the_agent_its_rejected_answer_and_the_issues() -> None:
@@ -97,8 +97,8 @@ def test_the_agent_is_asked_only_as_often_as_the_attempts_allow() -> None:
 
 def test_an_answer_that_is_not_an_extraction_at_all_is_retried() -> None:
     saved = FakePaperExtractionRepository()
-    outcome = build_use_case(FakeAgent("not an object", VALID_PAYLOAD), saved).execute(1)
-    assert outcome.attempts == 2
+    result = build_use_case(FakeAgent("not an object", VALID_PAYLOAD), saved).execute(1)
+    assert result.attempts == 2
 
 
 def test_the_agent_error_is_propagated() -> None:

@@ -1,11 +1,17 @@
 """Fakes and builders shared by the use case tests."""
 
+from collections.abc import Sequence
 from datetime import UTC, datetime
 
+from rkgk.domain.models.chunk import Chunk
 from rkgk.domain.models.concept_normalization import ConceptNormalization
+from rkgk.domain.models.embedding import EmbeddingTable
+from rkgk.domain.models.graph import KnowledgeGraph
+from rkgk.domain.models.manifest import IndexManifest
 from rkgk.domain.models.paper import Page, Paper, PaperIndexEntry, PaperMeta, PaperPreprocessInfo
 from rkgk.domain.models.paper_extraction import PaperExtraction
 from rkgk.domain.repositories.concept_normalization import ConceptNormalizationNotFoundError
+from rkgk.domain.repositories.index import IndexNotFoundError
 from rkgk.domain.repositories.paper import PaperNotFoundError
 from rkgk.domain.repositories.paper_extraction import PaperExtractionNotFoundError
 
@@ -69,3 +75,50 @@ class FakeConceptNormalizationRepository:
         if not self.saved:
             raise ConceptNormalizationNotFoundError("normalization not found")
         return self.saved[-1]
+
+
+class FakeIndexRepository:
+    """Records what a build saves, and in `saved` the order it saved it in, so a test can check both."""
+
+    def __init__(self) -> None:
+        self.saved: list[str] = []
+        self.chunks: tuple[Chunk, ...] | None = None
+        self.table: EmbeddingTable | None = None
+        self.graph: KnowledgeGraph | None = None
+        self.manifest: IndexManifest | None = None
+
+    def save_chunks(self, chunks: Sequence[Chunk]) -> None:
+        self.saved.append("chunks")
+        self.chunks = tuple(chunks)
+
+    def find_chunks(self) -> tuple[Chunk, ...]:
+        if self.chunks is None:
+            raise IndexNotFoundError("chunks not found")
+        return self.chunks
+
+    def save_embeddings(self, table: EmbeddingTable) -> None:
+        self.saved.append("embeddings")
+        self.table = table
+
+    def find_embeddings(self) -> EmbeddingTable:
+        if self.table is None:
+            raise IndexNotFoundError("embeddings not found")
+        return self.table
+
+    def save_graph(self, graph: KnowledgeGraph) -> None:
+        self.saved.append("graph")
+        self.graph = graph
+
+    def find_graph(self) -> KnowledgeGraph:
+        if self.graph is None:
+            raise IndexNotFoundError("graph not found")
+        return self.graph
+
+    def save_manifest(self, manifest: IndexManifest) -> None:
+        self.saved.append("manifest")
+        self.manifest = manifest
+
+    def find_manifest(self) -> IndexManifest:
+        if self.manifest is None:
+            raise IndexNotFoundError("manifest not found")
+        return self.manifest

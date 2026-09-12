@@ -44,7 +44,7 @@ def _run(args: argparse.Namespace) -> int:
         max_attempts=args.max_attempts,
     )
     try:
-        outcome = use_case.execute()
+        result = use_case.execute()
     except ConceptNormalizationValidationError as error:
         print_json(
             {
@@ -65,9 +65,9 @@ def _run(args: argparse.Namespace) -> int:
     ) as error:
         print_json({"status": "error", "message": str(error)})
         return EXIT_ERROR
-    payload: dict[str, object] = {"status": "ok", "papers": len(outcome.paper_ids)}
-    payload.update(_render_result(outcome.normalization))
-    payload["attempts"] = outcome.attempts
+    payload: dict[str, object] = {"status": "ok", "papers": len(result.paper_ids)}
+    payload.update(_render_result(result.normalization))
+    payload["attempts"] = result.attempts
     payload["paths"] = [str(path) for path in normalization_repository.paths()]
     print_json(payload)
     return EXIT_OK

@@ -30,6 +30,7 @@ from rkgk.domain.models.graph import (
     PaperConceptEdge,
     UnresolvedEvidence,
 )
+from rkgk.domain.models.manifest import INDEX_SCHEMA_VERSION, IndexBuildRun, IndexManifest
 from rkgk.domain.models.paper import (
     MARKER_PATTERN,
     MarkerKind,
@@ -52,6 +53,7 @@ from rkgk.domain.models.paper_extraction import (
     PageEvidence,
     PaperExtraction,
     PaperExtractionIssue,
+    PaperExtractionMismatchError,
     PaperExtractionRun,
     PaperExtractionValidationError,
     build_paper_extraction_schema,
@@ -117,6 +119,7 @@ __all__ = [
     "DEFAULT_MAX_TOKENS",
     "DOMAIN_MODEL_VERSION",
     "EXTRACTION_SCHEMA_VERSION",
+    "INDEX_SCHEMA_VERSION",
     "LOCAL_CONCEPT_ID_PATTERN",
     "MARKER_PATTERN",
     "SLUG_PATTERN",
@@ -150,6 +153,8 @@ __all__ = [
     "GeneralKnowledgeEdge",
     "IndexArtifactInvalidError",
     "IndexArtifactUnreadableError",
+    "IndexBuildRun",
+    "IndexManifest",
     "IndexNotFoundError",
     "IndexRepository",
     "IndexRepositoryError",
@@ -173,6 +178,7 @@ __all__ = [
     "PaperExtractionArtifactInvalidError",
     "PaperExtractionArtifactUnreadableError",
     "PaperExtractionIssue",
+    "PaperExtractionMismatchError",
     "PaperExtractionNotFoundError",
     "PaperExtractionRepository",
     "PaperExtractionRepositoryError",

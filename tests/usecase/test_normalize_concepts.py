@@ -99,10 +99,10 @@ def build_use_case(
 
 def test_an_answer_that_passes_validation_is_saved_after_one_attempt() -> None:
     saved = FakeConceptNormalizationRepository()
-    outcome = build_use_case(FakeAgent(VALID_PAYLOAD), saved).execute()
-    assert outcome.attempts == 1
-    assert outcome.paper_ids == (1, 2)
-    assert saved.saved == [outcome.normalization]
+    result = build_use_case(FakeAgent(VALID_PAYLOAD), saved).execute()
+    assert result.attempts == 1
+    assert result.paper_ids == (1, 2)
+    assert saved.saved == [result.normalization]
 
 
 def test_the_prompt_holds_the_concepts_of_every_extracted_paper() -> None:
@@ -114,9 +114,9 @@ def test_the_prompt_holds_the_concepts_of_every_extracted_paper() -> None:
 
 def test_an_answer_that_drops_a_concept_is_retried_and_the_attempts_are_counted() -> None:
     saved = FakeConceptNormalizationRepository()
-    outcome = build_use_case(FakeAgent(INCOMPLETE_PAYLOAD, VALID_PAYLOAD), saved).execute()
-    assert outcome.attempts == 2
-    assert saved.saved == [outcome.normalization]
+    result = build_use_case(FakeAgent(INCOMPLETE_PAYLOAD, VALID_PAYLOAD), saved).execute()
+    assert result.attempts == 2
+    assert saved.saved == [result.normalization]
 
 
 def test_the_retry_shows_the_agent_its_rejected_answer_and_the_issues() -> None:
@@ -129,8 +129,8 @@ def test_the_retry_shows_the_agent_its_rejected_answer_and_the_issues() -> None:
 
 def test_an_answer_that_is_not_a_normalization_at_all_is_retried_with_the_schema_issue() -> None:
     agent = FakeAgent("not an object", VALID_PAYLOAD)
-    outcome = build_use_case(agent, FakeConceptNormalizationRepository()).execute()
-    assert outcome.attempts == 2
+    result = build_use_case(agent, FakeConceptNormalizationRepository()).execute()
+    assert result.attempts == 2
     assert "## Issues" in agent.prompts[1]
 
 

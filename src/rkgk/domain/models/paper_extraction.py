@@ -4,6 +4,7 @@ An agent reads the pages of a single paper and reports the concepts it found, so
 paper (`c1`, `c2`, ...) and mean nothing outside it; a later normalization step assigns the global slugs.
 """
 
+from collections.abc import Mapping
 from typing import Annotated, Literal, Self
 
 from pydantic import Field, field_validator, model_validator
@@ -123,6 +124,22 @@ class PaperExtractionValidationError(Exception):
     def __init__(self, issues: tuple[PaperExtractionIssue, ...]) -> None:
         super().__init__("; ".join(f"{issue.path}: {issue.message}" for issue in issues))
         self.issues = issues
+
+
+class PaperExtractionMismatchError(Exception):
+    """Raised when stored extractions no longer match the text of their papers, so a re-extraction or a repair
+    of the hand edit is the remedy.
+    """
+
+    def __init__(self, issues_by_paper: Mapping[int, tuple[PaperExtractionIssue, ...]]) -> None:
+        super().__init__(
+            "; ".join(
+                f"paper {paper_id}: {issue.path}: {issue.message}"
+                for paper_id, issues in issues_by_paper.items()
+                for issue in issues
+            )
+        )
+        self.issues_by_paper = dict(issues_by_paper)
 
 
 def build_paper_extraction_schema() -> dict[str, object]:

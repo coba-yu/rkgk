@@ -11,6 +11,8 @@ from rkgk.domain.models.paper_extraction import (
     ExtractedPaperConceptEdge,
     PageEvidence,
     PaperExtraction,
+    PaperExtractionIssue,
+    PaperExtractionMismatchError,
     build_paper_extraction_schema,
 )
 from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType, PaperConceptRelation
@@ -138,3 +140,26 @@ def test_the_schema_describes_the_summary_and_the_local_id_pattern() -> None:
 
 def test_the_schema_is_json_serializable() -> None:
     assert json.loads(json.dumps(build_paper_extraction_schema())) == build_paper_extraction_schema()
+
+
+def test_a_mismatch_error_names_the_paper_and_the_field_of_every_issue() -> None:
+    error = PaperExtractionMismatchError(
+        {
+            1: (
+                PaperExtractionIssue(
+                    path="paper_concepts[0].evidence[0].quote", message="is not found in the text of page 1"
+                ),
+            ),
+            3: (PaperExtractionIssue(path="paper_id", message="is 3, but the paper being checked is 4"),),
+        }
+    )
+    assert str(error) == (
+        "paper 1: paper_concepts[0].evidence[0].quote: is not found in the text of page 1; "
+        "paper 3: paper_id: is 3, but the paper being checked is 4"
+    )
+
+
+def test_a_mismatch_error_keeps_the_issues_of_each_paper_as_an_attribute() -> None:
+    issues = (PaperExtractionIssue(path="paper_id", message="is 3, but the paper being checked is 4"),)
+    error = PaperExtractionMismatchError({3: issues})
+    assert error.issues_by_paper == {3: issues}

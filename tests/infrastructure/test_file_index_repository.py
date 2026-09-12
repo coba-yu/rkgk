@@ -4,8 +4,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from rkgk.domain.models.chunk import Chunk
 from rkgk.domain.models.embedding import EmbeddedItem, EmbeddedItemKind, EmbeddingTable
 from rkgk.domain.models.graph import ChunkEvidence, Concept, ConceptEdge, KnowledgeGraph, PaperConceptEdge
+from rkgk.domain.models.manifest import IndexManifest
 from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType, Origin, PaperConceptRelation
 from rkgk.domain.repositories.index import IndexArtifactInvalidError, IndexNotFoundError, IndexRepositoryError
 from rkgk.infrastructure.file_index_repository import FileIndexRepository
@@ -17,6 +19,20 @@ TABLE = EmbeddingTable(
         EmbeddedItem(kind=EmbeddedItemKind.CONCEPT, ref="retrieval", text="Retrieval (検索)"),
     ),
     vectors=np.arange(12, dtype=np.float32).reshape(3, 4),
+)
+
+CHUNKS = (
+    Chunk.create(paper_id=1, idx=0, page_start=1, page_end=1, text="We study retrieval."),
+    Chunk.create(paper_id=1, idx=1, page_start=2, page_end=2, text="検索の手法を述べる。"),
+)
+
+MANIFEST = IndexManifest(
+    schema_version=1,
+    domain_model_version=1,
+    embedding_model="Qwen/Qwen3-Embedding-0.6B",
+    embedding_dimension=4,
+    chunk_max_tokens=512,
+    paper_ids=(1, 2),
 )
 
 GRAPH = KnowledgeGraph(
@@ -234,3 +250,92 @@ def test_the_graph_and_the_embedding_table_live_side_by_side(tmp_path: Path) -> 
     repository.save_graph(GRAPH)
     assert repository.find_embeddings() == TABLE
     assert repository.find_graph() == GRAPH
+
+
+def test_saved_chunks_are_read_back_unchanged(tmp_path: Path) -> None:
+    repository = FileIndexRepository(tmp_path)
+    repository.save_chunks(CHUNKS)
+    assert repository.find_chunks() == CHUNKS
+
+
+def test_the_chunks_are_written_one_per_line_as_japanese_characters(tmp_path: Path) -> None:
+    repository = FileIndexRepository(tmp_path)
+    repository.save_chunks(CHUNKS)
+    assert repository.chunks_path == tmp_path / "index" / "chunks.jsonl"
+    lines = repository.chunks_path.read_text(encoding="utf-8").splitlines()
+    assert [json.loads(line)["id"] for line in lines] == ["1:0", "1:1"]
+    assert "検索の手法を述べる。" in lines[1]
+
+
+def test_a_data_directory_without_chunks_is_reported_as_not_found(tmp_path: Path) -> None:
+    repository = FileIndexRepository(tmp_path)
+    with pytest.raises(IndexNotFoundError, match="chunks.jsonl: not found") as caught:
+        repository.find_chunks()
+    assert caught.value.location == str(repository.chunks_path)
+
+
+def test_a_corrupted_chunk_line_is_reported_with_its_line_number(tmp_path: Path) -> None:
+    repository = FileIndexRepository(tmp_path)
+    repository.save_chunks(CHUNKS)
+    lines = repository.chunks_path.read_text(encoding="utf-8").splitlines()
+    lines[1] = '{"id": "1:1", "paper_id": 1}'
+    repository.chunks_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    with pytest.raises(IndexArtifactInvalidError, match="line 2 is not a valid Chunk"):
+        repository.find_chunks()
+
+
+def test_the_same_chunk_id_on_two_lines_is_reported_as_invalid(tmp_path: Path) -> None:
+    repository = FileIndexRepository(tmp_path)
+    repository.save_chunks((CHUNKS[0], CHUNKS[0]))
+    with pytest.raises(IndexArtifactInvalidError, match="line 2 repeats the chunk '1:0'"):
+        repository.find_chunks()
+
+
+def test_saving_chunks_twice_replaces_the_previous_chunks(tmp_path: Path) -> None:
+    repository = FileIndexRepository(tmp_path)
+    repository.save_chunks(CHUNKS)
+    repository.save_chunks(CHUNKS[:1])
+    assert repository.find_chunks() == CHUNKS[:1]
+
+
+def test_a_saved_manifest_is_read_back_unchanged(tmp_path: Path) -> None:
+    repository = FileIndexRepository(tmp_path)
+    repository.save_manifest(MANIFEST)
+    assert repository.find_manifest() == MANIFEST
+
+
+def test_the_manifest_is_stored_as_indented_json_ending_with_a_newline(tmp_path: Path) -> None:
+    repository = FileIndexRepository(tmp_path)
+    repository.save_manifest(MANIFEST)
+    assert repository.manifest_path == tmp_path / "index" / "manifest.json"
+    text = repository.manifest_path.read_text(encoding="utf-8")
+    assert '\n  "embedding_model": "Qwen/Qwen3-Embedding-0.6B"' in text
+    assert text.endswith("\n")
+
+
+def test_a_data_directory_without_a_manifest_is_reported_as_not_found(tmp_path: Path) -> None:
+    repository = FileIndexRepository(tmp_path)
+    with pytest.raises(IndexNotFoundError, match="manifest.json: not found") as caught:
+        repository.find_manifest()
+    assert caught.value.location == str(repository.manifest_path)
+
+
+def test_a_manifest_of_another_schema_version_is_reported_as_invalid(tmp_path: Path) -> None:
+    repository = FileIndexRepository(tmp_path)
+    repository.save_manifest(MANIFEST)
+    stored = json.loads(repository.manifest_path.read_text(encoding="utf-8"))
+    stored["schema_version"] = 2
+    repository.manifest_path.write_text(json.dumps(stored), encoding="utf-8")
+    with pytest.raises(IndexArtifactInvalidError, match="is not a valid IndexManifest"):
+        repository.find_manifest()
+
+
+def test_the_paths_of_an_index_start_with_the_manifest(tmp_path: Path) -> None:
+    repository = FileIndexRepository(tmp_path)
+    assert repository.paths() == (
+        tmp_path / "index" / "manifest.json",
+        tmp_path / "index" / "chunks.jsonl",
+        tmp_path / "index" / "items.jsonl",
+        tmp_path / "index" / "embeddings.npy",
+        tmp_path / "index" / "graph.json",
+    )

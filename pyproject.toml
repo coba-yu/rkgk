@@ -12,6 +12,7 @@ dependencies = [
 [project.scripts]
 extract = "rkgk.cli.extract:main"
 normalize = "rkgk.cli.normalize:main"
+build = "rkgk.cli.build:main"
 
 [project.optional-dependencies]
 embedding = [
