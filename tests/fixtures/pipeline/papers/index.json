@@ -1,0 +1,16 @@
+{
+  "papers": [
+    {
+      "id": 1,
+      "title": "Graph-Guided Retrieval for Finding the Next Paper to Read"
+    },
+    {
+      "id": 2,
+      "title": "Knowledge Graphs as Retrieval Backbones"
+    },
+    {
+      "id": 3,
+      "title": "Dense Passage Retrieval for Open-Domain Question Answering"
+    }
+  ]
+}

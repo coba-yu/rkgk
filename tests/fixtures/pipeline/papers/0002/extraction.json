@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "paper_id": 2,
+  "summary_ja": "知識グラフを論文検索の骨格に据え、概念ノードから周辺の論文へ到達する。",
+  "concepts": [
+    {
+      "local_id": "c1",
+      "name": "Knowledge Graph",
+      "type": "method",
+      "aliases": [],
+      "description": "概念をノード、論文との関係を辺で表すグラフ。"
+    },
+    {
+      "local_id": "c2",
+      "name": "RAG",
+      "type": "method",
+      "aliases": [
+        "retrieval-augmented generation"
+      ],
+      "description": "検索した文書を使って回答を生成する枠組み。"
+    }
+  ],
+  "paper_concepts": [
+    {
+      "concept_id": "c1",
+      "relation": "proposes",
+      "evidence": [
+        {
+          "page": 1,
+          "quote": "We propose a knowledge graph as the retrieval backbone"
+        }
+      ]
+    },
+    {
+      "concept_id": "c2",
+      "relation": "uses",
+      "evidence": [
+        {
+          "page": 1,
+          "quote": "so RAG can answer with the papers around a concept"
+        }
+      ]
+    }
+  ],
+  "concept_relations": []
+}

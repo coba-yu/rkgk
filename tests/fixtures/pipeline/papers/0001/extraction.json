@@ -1,0 +1,75 @@
+{
+  "schema_version": 1,
+  "paper_id": 1,
+  "summary_ja": "密検索で見つけた論文から知識グラフをたどり、次に読む論文を推薦するグラフ誘導検索を提案する。",
+  "concepts": [
+    {
+      "local_id": "c1",
+      "name": "Graph-Guided Retrieval",
+      "type": "method",
+      "aliases": [],
+      "description": "密検索の結果を起点に知識グラフをたどって候補を増やす検索手法。"
+    },
+    {
+      "local_id": "c2",
+      "name": "Retrieval-Augmented Generation",
+      "type": "method",
+      "aliases": [
+        "RAG"
+      ],
+      "description": "外部文書を検索して生成に使うパラダイム。"
+    },
+    {
+      "local_id": "c3",
+      "name": "Next-Paper Recommendation",
+      "type": "problem",
+      "aliases": [],
+      "description": "テーマから次に読む論文を 1 本選ぶタスク。"
+    }
+  ],
+  "paper_concepts": [
+    {
+      "concept_id": "c1",
+      "relation": "proposes",
+      "evidence": [
+        {
+          "page": 1,
+          "quote": "We propose graph-guided retrieval, which walks a knowledge graph from the papers a dense retriever found."
+        }
+      ]
+    },
+    {
+      "concept_id": "c2",
+      "relation": "uses",
+      "evidence": [
+        {
+          "page": 1,
+          "quote": "extends retrieval-augmented generation with concept nodes"
+        }
+      ]
+    },
+    {
+      "concept_id": "c3",
+      "relation": "addresses",
+      "evidence": [
+        {
+          "page": 2,
+          "quote": "We address next-paper recommendation"
+        }
+      ]
+    }
+  ],
+  "concept_relations": [
+    {
+      "source_id": "c1",
+      "target_id": "c2",
+      "relation": "is_a",
+      "evidence": [
+        {
+          "page": 2,
+          "quote": "Graph-guided retrieval is a form of retrieval-augmented generation"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "id": 3,
+  "title": "Dense Passage Retrieval for Open-Domain Question Answering",
+  "authors": [
+    "Alan Turing"
+  ],
+  "year": 2025,
+  "venue": "ICLR",
+  "page_count": 1,
+  "preprocess": {
+    "tool": "pymupdf",
+    "version": "1.24.0",
+    "processed_at": "2026-01-01T00:00:00Z"
+  }
+}

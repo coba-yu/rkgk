@@ -1,0 +1,15 @@
+{
+  "id": 2,
+  "title": "Knowledge Graphs as Retrieval Backbones",
+  "authors": [
+    "Grace Hopper"
+  ],
+  "year": 2026,
+  "venue": "NeurIPS",
+  "page_count": 1,
+  "preprocess": {
+    "tool": "pymupdf",
+    "version": "1.24.0",
+    "processed_at": "2026-01-01T00:00:00Z"
+  }
+}

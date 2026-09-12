@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "paper_id": 3,
+  "summary_ja": "質問と文書を二重エンコーダで埋め込む密文書検索を提案し、オープンドメイン質問応答に適用する。",
+  "concepts": [
+    {
+      "local_id": "c1",
+      "name": "Dense Passage Retrieval",
+      "type": "method",
+      "aliases": [
+        "DPR"
+      ],
+      "description": "質問と文書を別々のエンコーダで埋め込み、内積で検索する手法。"
+    },
+    {
+      "local_id": "c2",
+      "name": "Open-Domain Question Answering",
+      "type": "problem",
+      "aliases": [],
+      "description": "文書集合全体から答えを探す質問応答タスク。"
+    }
+  ],
+  "paper_concepts": [
+    {
+      "concept_id": "c1",
+      "relation": "proposes",
+      "evidence": [
+        {
+          "page": 1,
+          "quote": "We propose dense passage retrieval, which embeds questions and passages with a dual encoder."
+        }
+      ]
+    },
+    {
+      "concept_id": "c2",
+      "relation": "addresses",
+      "evidence": [
+        {
+          "page": 1,
+          "quote": "The retriever addresses open-domain question answering"
+        }
+      ]
+    }
+  ],
+  "concept_relations": []
+}
