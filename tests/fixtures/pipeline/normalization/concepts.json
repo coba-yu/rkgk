@@ -1,0 +1,91 @@
+{
+  "schema_version": 1,
+  "concepts": [
+    {
+      "id": "graph-guided-retrieval",
+      "canonical_name": "Graph-Guided Retrieval",
+      "type": "method",
+      "aliases": [],
+      "description": "密検索の結果を起点に知識グラフをたどって候補を増やす検索手法。",
+      "merged_from": [
+        {
+          "paper_id": 1,
+          "local_id": "c1"
+        }
+      ]
+    },
+    {
+      "id": "retrieval-augmented-generation",
+      "canonical_name": "Retrieval-Augmented Generation",
+      "type": "method",
+      "aliases": [
+        "RAG"
+      ],
+      "description": "外部文書を検索して生成に使うパラダイム。",
+      "merged_from": [
+        {
+          "paper_id": 1,
+          "local_id": "c2"
+        },
+        {
+          "paper_id": 2,
+          "local_id": "c2"
+        }
+      ]
+    },
+    {
+      "id": "next-paper-recommendation",
+      "canonical_name": "Next-Paper Recommendation",
+      "type": "problem",
+      "aliases": [],
+      "description": "テーマから次に読む論文を 1 本選ぶタスク。",
+      "merged_from": [
+        {
+          "paper_id": 1,
+          "local_id": "c3"
+        }
+      ]
+    },
+    {
+      "id": "knowledge-graph",
+      "canonical_name": "Knowledge Graph",
+      "type": "method",
+      "aliases": [],
+      "description": "概念をノード、論文との関係を辺で表すグラフ。",
+      "merged_from": [
+        {
+          "paper_id": 2,
+          "local_id": "c1"
+        }
+      ]
+    },
+    {
+      "id": "dense-passage-retrieval",
+      "canonical_name": "Dense Passage Retrieval",
+      "type": "method",
+      "aliases": [
+        "DPR"
+      ],
+      "description": "質問と文書を別々のエンコーダで埋め込み、内積で検索する手法。",
+      "merged_from": [
+        {
+          "paper_id": 3,
+          "local_id": "c1"
+        }
+      ]
+    },
+    {
+      "id": "open-domain-question-answering",
+      "canonical_name": "Open-Domain Question Answering",
+      "type": "problem",
+      "aliases": [],
+      "description": "文書集合全体から答えを探す質問応答タスク。",
+      "merged_from": [
+        {
+          "paper_id": 3,
+          "local_id": "c2"
+        }
+      ]
+    }
+  ]
+}

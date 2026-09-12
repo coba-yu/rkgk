@@ -1,0 +1,17 @@
+{
+  "schema_version": 1,
+  "concept_relations": [
+    {
+      "source_id": "knowledge-graph",
+      "target_id": "graph-guided-retrieval",
+      "relation": "used_for",
+      "rationale": "グラフ誘導検索は知識グラフをたどるので、知識グラフはその部品として使われる。"
+    },
+    {
+      "source_id": "dense-passage-retrieval",
+      "target_id": "graph-guided-retrieval",
+      "relation": "used_for",
+      "rationale": "グラフ誘導検索は密検索で見つけた論文を起点にするので、密文書検索を前段として使う。"
+    }
+  ]
+}

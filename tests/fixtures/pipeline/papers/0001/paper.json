@@ -1,0 +1,16 @@
+{
+  "id": 1,
+  "title": "Graph-Guided Retrieval for Finding the Next Paper to Read",
+  "authors": [
+    "Ada Lovelace"
+  ],
+  "year": 2026,
+  "venue": "NeurIPS",
+  "page_count": 2,
+  "arxiv_id": "2601.00001",
+  "preprocess": {
+    "tool": "pymupdf",
+    "version": "1.24.0",
+    "processed_at": "2026-01-01T00:00:00Z"
+  }
+}
