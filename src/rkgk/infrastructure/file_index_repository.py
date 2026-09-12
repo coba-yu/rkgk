@@ -4,19 +4,26 @@ The vectors live in `embeddings.npy` and the items in `items.jsonl`, one item pe
 vectors, so the items stay diffable and greppable while the vectors stay a plain binary matrix.
 `find_embeddings` reassembles one `EmbeddingTable` from the pair, so a pair whose counts disagree is reported
 instead of being searched.
+The chunks live in `chunks.jsonl` the same way, one chunk per line, because a retrieval hit names a chunk id and
+the text behind it has to be readable without rebuilding the index.
 The graph lives in `graph.json`, the pydantic JSON of `KnowledgeGraph`, rather than a networkx node-link dump:
 that way the stored graph gets the same schema validation on read as every other artifact, so a hand-edited or
 stale file fails loudly instead of being traversed.
+The manifest lives in `manifest.json` and is written after the artifacts it describes, so an index directory
+without it is one whose build did not finish.
 """
 
 import json
+from collections.abc import Sequence
 from pathlib import Path
 
 import numpy as np
 from pydantic import ValidationError
 
+from rkgk.domain.models.chunk import Chunk
 from rkgk.domain.models.embedding import EmbeddedItem, EmbeddingTable
 from rkgk.domain.models.graph import KnowledgeGraph
+from rkgk.domain.models.manifest import IndexManifest
 from rkgk.domain.repositories.index import (
     IndexArtifactInvalidError,
     IndexArtifactUnreadableError,
@@ -25,8 +32,10 @@ from rkgk.domain.repositories.index import (
 )
 
 INDEX_DIR_NAME = "index"
-EMBEDDINGS_FILE_NAME = "embeddings.npy"
+MANIFEST_FILE_NAME = "manifest.json"
+CHUNKS_FILE_NAME = "chunks.jsonl"
 ITEMS_FILE_NAME = "items.jsonl"
+EMBEDDINGS_FILE_NAME = "embeddings.npy"
 GRAPH_FILE_NAME = "graph.json"
 
 
@@ -39,16 +48,53 @@ class FileIndexRepository:
         self._dir = data_dir / INDEX_DIR_NAME
 
     @property
-    def embeddings_path(self) -> Path:
-        return self._dir / EMBEDDINGS_FILE_NAME
+    def manifest_path(self) -> Path:
+        return self._dir / MANIFEST_FILE_NAME
+
+    @property
+    def chunks_path(self) -> Path:
+        return self._dir / CHUNKS_FILE_NAME
 
     @property
     def items_path(self) -> Path:
         return self._dir / ITEMS_FILE_NAME
 
     @property
+    def embeddings_path(self) -> Path:
+        return self._dir / EMBEDDINGS_FILE_NAME
+
+    @property
     def graph_path(self) -> Path:
         return self._dir / GRAPH_FILE_NAME
+
+    def paths(self) -> tuple[Path, ...]:
+        """Every file of the index, the manifest first, so a command can report what a build wrote."""
+        return (self.manifest_path, self.chunks_path, self.items_path, self.embeddings_path, self.graph_path)
+
+    def save_chunks(self, chunks: Sequence[Chunk]) -> None:
+        self._write_text(
+            self.chunks_path,
+            "".join(json.dumps(chunk.model_dump(mode="json"), ensure_ascii=False) + "\n" for chunk in chunks),
+        )
+
+    def find_chunks(self) -> tuple[Chunk, ...]:
+        path = self.chunks_path
+        raw = self._read_text(path)
+        chunks: list[Chunk] = []
+        seen: set[str] = set()
+        for number, line in enumerate(raw.splitlines(), start=1):
+            if not line.strip():
+                continue
+            try:
+                chunk = Chunk.model_validate_json(line)
+            except ValidationError as error:
+                raise _fail(IndexArtifactInvalidError, path, f"line {number} is not a valid Chunk: {error}") from error
+            if chunk.id in seen:
+                # A repeated id would make a retrieval hit point at two different texts, so the file is rejected.
+                raise _fail(IndexArtifactInvalidError, path, f"line {number} repeats the chunk {chunk.id!r}")
+            seen.add(chunk.id)
+            chunks.append(chunk)
+        return tuple(chunks)
 
     def save_embeddings(self, table: EmbeddingTable) -> None:
         lines = "".join(json.dumps(item.model_dump(mode="json"), ensure_ascii=False) + "\n" for item in table.items)
@@ -72,40 +118,30 @@ class FileIndexRepository:
             raise _fail(IndexArtifactInvalidError, self._dir, f"is not a valid EmbeddingTable: {error}") from error
 
     def save_graph(self, graph: KnowledgeGraph) -> None:
-        try:
-            self._dir.mkdir(parents=True, exist_ok=True)
-            self.graph_path.write_text(graph.model_dump_json(indent=2) + "\n", encoding="utf-8")
-        except OSError as error:
-            # A failed write is an environment problem, the same kind as a failed read, so it uses the same class.
-            raise _fail(
-                IndexArtifactUnreadableError, self._dir, f"cannot be written: {error.strerror or error}"
-            ) from error
+        self._write_text(self.graph_path, graph.model_dump_json(indent=2) + "\n")
 
     def find_graph(self) -> KnowledgeGraph:
         path = self.graph_path
-        try:
-            raw = path.read_text(encoding="utf-8")
-        except FileNotFoundError as error:
-            raise _fail(IndexNotFoundError, path, "not found") from error
-        except OSError as error:
-            raise _fail(IndexArtifactUnreadableError, path, f"cannot be read: {error.strerror or error}") from error
-        except UnicodeDecodeError as error:
-            raise _fail(IndexArtifactInvalidError, path, f"is not valid UTF-8: {error}") from error
+        raw = self._read_text(path)
         try:
             return KnowledgeGraph.model_validate_json(raw)
         except ValidationError as error:
             raise _fail(IndexArtifactInvalidError, path, f"is not a valid KnowledgeGraph: {error}") from error
 
+    def save_manifest(self, manifest: IndexManifest) -> None:
+        self._write_text(self.manifest_path, manifest.model_dump_json(indent=2) + "\n")
+
+    def find_manifest(self) -> IndexManifest:
+        path = self.manifest_path
+        raw = self._read_text(path)
+        try:
+            return IndexManifest.model_validate_json(raw)
+        except ValidationError as error:
+            raise _fail(IndexArtifactInvalidError, path, f"is not a valid IndexManifest: {error}") from error
+
     def _read_items(self) -> tuple[EmbeddedItem, ...]:
         path = self.items_path
-        try:
-            raw = path.read_text(encoding="utf-8")
-        except FileNotFoundError as error:
-            raise _fail(IndexNotFoundError, path, "not found") from error
-        except OSError as error:
-            raise _fail(IndexArtifactUnreadableError, path, f"cannot be read: {error.strerror or error}") from error
-        except UnicodeDecodeError as error:
-            raise _fail(IndexArtifactInvalidError, path, f"is not valid UTF-8: {error}") from error
+        raw = self._read_text(path)
         items: list[EmbeddedItem] = []
         for number, line in enumerate(raw.splitlines(), start=1):
             if not line.strip():
@@ -133,3 +169,24 @@ class FileIndexRepository:
         if not isinstance(vectors, np.ndarray):
             raise _fail(IndexArtifactInvalidError, path, f"holds a {type(vectors).__name__} instead of an array")
         return vectors
+
+    def _read_text(self, path: Path) -> str:
+        """Read one text artifact, telling a missing index from an unreadable file and from unreadable bytes."""
+        try:
+            return path.read_text(encoding="utf-8")
+        except FileNotFoundError as error:
+            raise _fail(IndexNotFoundError, path, "not found") from error
+        except OSError as error:
+            raise _fail(IndexArtifactUnreadableError, path, f"cannot be read: {error.strerror or error}") from error
+        except UnicodeDecodeError as error:
+            raise _fail(IndexArtifactInvalidError, path, f"is not valid UTF-8: {error}") from error
+
+    def _write_text(self, path: Path, text: str) -> None:
+        try:
+            self._dir.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding="utf-8")
+        except OSError as error:
+            # A failed write is an environment problem, the same kind as a failed read, so it uses the same class.
+            raise _fail(
+                IndexArtifactUnreadableError, self._dir, f"cannot be written: {error.strerror or error}"
+            ) from error
