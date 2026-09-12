@@ -114,6 +114,8 @@ class _ConceptWalk:
         A relation is followed against its direction too, because "X is_a Y" relates the two papers whichever end
         the path came in by; the hop names the concept it arrived at, so the relation can still be read as stated.
         """
+        # TODO: Following is_a / part_of backward walks toward the generalization, which spreads to papers on the
+        # broad concept; a per-direction setting in SearchConfig may be needed so that only one direction is followed.
         hops: list[ConceptHop] = []
         # Nothing but a concept relation leaves a concept: the view draws a paper edge from the paper to the concept.
         for _, reached_id, attributes in self.view.out_edges(concept_id, data=True):
