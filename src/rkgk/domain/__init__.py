@@ -58,6 +58,16 @@ from rkgk.domain.models.paper_extraction import (
     PaperExtractionValidationError,
     build_paper_extraction_schema,
 )
+from rkgk.domain.models.search import (
+    DEFAULT_TOP_K,
+    ConceptHop,
+    PaperCandidate,
+    PaperHits,
+    SearchConfig,
+    SearchHit,
+    SearchResult,
+    TraversalPath,
+)
 from rkgk.domain.models.vocabulary import (
     ConceptRelationSpec,
     ConceptRelationType,
@@ -84,6 +94,7 @@ from rkgk.domain.repositories.concept_normalization import (
 from rkgk.domain.repositories.index import (
     IndexArtifactInvalidError,
     IndexArtifactUnreadableError,
+    IndexIncompatibleError,
     IndexNotFoundError,
     IndexRepository,
     IndexRepositoryError,
@@ -109,6 +120,7 @@ from rkgk.domain.services.evidence_resolver import find_chunk, resolve_extractio
 from rkgk.domain.services.graph_builder import build_knowledge_graph, build_paper_node_id, to_networkx
 from rkgk.domain.services.paper_extraction import check_extraction_against_paper, normalize_whitespace
 from rkgk.domain.services.validation import format_error_path
+from rkgk.domain.services.vector_search import compute_cosine_scores, search_vectors
 from rkgk.domain.tokenizers import Tokenizer
 
 DOMAIN_MODEL_VERSION = 1
@@ -117,6 +129,7 @@ __all__ = [
     "CHUNK_ID_PATTERN",
     "CONCEPT_NORMALIZATION_SCHEMA_VERSION",
     "DEFAULT_MAX_TOKENS",
+    "DEFAULT_TOP_K",
     "DOMAIN_MODEL_VERSION",
     "EXTRACTION_SCHEMA_VERSION",
     "INDEX_SCHEMA_VERSION",
@@ -127,6 +140,7 @@ __all__ = [
     "ChunkEvidence",
     "Concept",
     "ConceptEdge",
+    "ConceptHop",
     "ConceptNormalization",
     "ConceptNormalizationArtifactInvalidError",
     "ConceptNormalizationArtifactUnreadableError",
@@ -154,6 +168,7 @@ __all__ = [
     "IndexArtifactInvalidError",
     "IndexArtifactUnreadableError",
     "IndexBuildRun",
+    "IndexIncompatibleError",
     "IndexManifest",
     "IndexNotFoundError",
     "IndexRepository",
@@ -172,6 +187,7 @@ __all__ = [
     "Paper",
     "PaperArtifactInvalidError",
     "PaperArtifactUnreadableError",
+    "PaperCandidate",
     "PaperConceptEdge",
     "PaperConceptRelation",
     "PaperExtraction",
@@ -184,6 +200,7 @@ __all__ = [
     "PaperExtractionRepositoryError",
     "PaperExtractionRun",
     "PaperExtractionValidationError",
+    "PaperHits",
     "PaperIndexEntry",
     "PaperMeta",
     "PaperNotFoundError",
@@ -191,10 +208,14 @@ __all__ = [
     "PaperRepository",
     "PaperRepositoryError",
     "RelationSpec",
+    "SearchConfig",
+    "SearchHit",
+    "SearchResult",
     "Slug",
     "StructuredOutputAgent",
     "StructuredOutputAgentError",
     "Tokenizer",
+    "TraversalPath",
     "UnresolvedEvidence",
     "build_concept_normalization_prompt",
     "build_concept_normalization_schema",
@@ -206,6 +227,7 @@ __all__ = [
     "check_extraction_against_paper",
     "check_normalization_against_extractions",
     "chunk_paper",
+    "compute_cosine_scores",
     "concept_embedding_text",
     "describe_vocabulary",
     "find_chunk",
@@ -214,6 +236,7 @@ __all__ = [
     "build_paper_node_id",
     "parse_page",
     "resolve_extraction_evidence",
+    "search_vectors",
     "to_networkx",
     "traversable_concept_relations",
     "traversable_concept_types",

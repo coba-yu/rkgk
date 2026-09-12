@@ -11,6 +11,8 @@ that way the stored graph gets the same schema validation on read as every other
 stale file fails loudly instead of being traversed.
 The manifest lives in `manifest.json` and is written after the artifacts it describes, so an index directory
 without it is one whose build did not finish.
+`find_index` reassembles the whole index into one `IndexBuildRun`, reading the manifest first so an index built
+with another schema or another domain model is reported before any chunk, vector or graph is loaded.
 """
 
 import json
@@ -20,13 +22,15 @@ from pathlib import Path
 import numpy as np
 from pydantic import ValidationError
 
+from rkgk.domain import DOMAIN_MODEL_VERSION
 from rkgk.domain.models.chunk import Chunk
 from rkgk.domain.models.embedding import EmbeddedItem, EmbeddingTable
 from rkgk.domain.models.graph import KnowledgeGraph
-from rkgk.domain.models.manifest import IndexManifest
+from rkgk.domain.models.manifest import INDEX_SCHEMA_VERSION, IndexBuildRun, IndexManifest
 from rkgk.domain.repositories.index import (
     IndexArtifactInvalidError,
     IndexArtifactUnreadableError,
+    IndexIncompatibleError,
     IndexNotFoundError,
     IndexRepositoryError,
 )
@@ -135,9 +139,42 @@ class FileIndexRepository:
         path = self.manifest_path
         raw = self._read_text(path)
         try:
-            return IndexManifest.model_validate_json(raw)
+            payload = json.loads(raw)
+        except json.JSONDecodeError as error:
+            raise _fail(IndexArtifactInvalidError, path, f"is not valid JSON: {error}") from error
+        if isinstance(payload, dict):
+            # The versions are compared before pydantic runs because `schema_version` is a Literal: another version
+            # would only produce a generic validation error, hiding that a rebuild is needed rather than a repair.
+            self._check_version(path, payload, "schema_version", "index schema", INDEX_SCHEMA_VERSION)
+            self._check_version(path, payload, "domain_model_version", "domain model", DOMAIN_MODEL_VERSION)
+        try:
+            return IndexManifest.model_validate(payload)
         except ValidationError as error:
             raise _fail(IndexArtifactInvalidError, path, f"is not a valid IndexManifest: {error}") from error
+
+    def find_index(self) -> IndexBuildRun:
+        """Read the whole index, the manifest first so a version mismatch is reported before anything is loaded."""
+        manifest = self.find_manifest()
+        chunks = self.find_chunks()
+        embeddings = self.find_embeddings()
+        graph = self.find_graph()
+        try:
+            return IndexBuildRun(manifest=manifest, chunks=chunks, embeddings=embeddings, graph=graph)
+        except ValidationError as error:
+            raise _fail(
+                IndexArtifactInvalidError, self._dir, f"holds artifacts that do not belong together: {error}"
+            ) from error
+
+    @staticmethod
+    def _check_version(path: Path, payload: dict[str, object], field: str, label: str, expected: int) -> None:
+        """Reject a version the current code does not read, naming what was found and what is read instead."""
+        found = payload.get(field)
+        if field in payload and found != expected:
+            raise _fail(
+                IndexIncompatibleError,
+                path,
+                f"built with {label} {found} while this rkgk reads {expected}; rebuild the index",
+            )
 
     def _read_items(self) -> tuple[EmbeddedItem, ...]:
         path = self.items_path

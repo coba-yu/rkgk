@@ -4,12 +4,18 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from rkgk.domain import DOMAIN_MODEL_VERSION
 from rkgk.domain.models.chunk import Chunk
 from rkgk.domain.models.embedding import EmbeddedItem, EmbeddedItemKind, EmbeddingTable
 from rkgk.domain.models.graph import ChunkEvidence, Concept, ConceptEdge, KnowledgeGraph, PaperConceptEdge
 from rkgk.domain.models.manifest import IndexManifest
 from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType, Origin, PaperConceptRelation
-from rkgk.domain.repositories.index import IndexArtifactInvalidError, IndexNotFoundError, IndexRepositoryError
+from rkgk.domain.repositories.index import (
+    IndexArtifactInvalidError,
+    IndexIncompatibleError,
+    IndexNotFoundError,
+    IndexRepositoryError,
+)
 from rkgk.infrastructure.file_index_repository import FileIndexRepository
 
 TABLE = EmbeddingTable(
@@ -79,6 +85,20 @@ GRAPH = KnowledgeGraph(
             rationale="知識グラフと検索は一般的によく組み合わせて使われる。",
         ),
     ),
+)
+
+
+# One row per chunk, per paper summary and per concept, the count IndexBuildRun expects of CHUNKS, MANIFEST and GRAPH.
+CONSISTENT_TABLE = EmbeddingTable(
+    items=(
+        EmbeddedItem(kind=EmbeddedItemKind.CHUNK, ref="1:0", paper_id=1, text="We study retrieval."),
+        EmbeddedItem(kind=EmbeddedItemKind.CHUNK, ref="1:1", paper_id=1, text="検索の手法を述べる。"),
+        EmbeddedItem(kind=EmbeddedItemKind.SUMMARY, ref="1", paper_id=1, text="検索を研究する。"),
+        EmbeddedItem(kind=EmbeddedItemKind.SUMMARY, ref="2", paper_id=2, text="知識グラフを研究する。"),
+        EmbeddedItem(kind=EmbeddedItemKind.CONCEPT, ref="retrieval", text="Retrieval (検索)"),
+        EmbeddedItem(kind=EmbeddedItemKind.CONCEPT, ref="knowledge-graph", text="Knowledge Graph"),
+    ),
+    vectors=np.arange(24, dtype=np.float32).reshape(6, 4),
 )
 
 
@@ -320,14 +340,93 @@ def test_a_data_directory_without_a_manifest_is_reported_as_not_found(tmp_path: 
     assert caught.value.location == str(repository.manifest_path)
 
 
-def test_a_manifest_of_another_schema_version_is_reported_as_invalid(tmp_path: Path) -> None:
-    repository = FileIndexRepository(tmp_path)
+def store_manifest_with(repository: FileIndexRepository, **overrides: object) -> None:
+    """Write a manifest whose stored JSON differs from MANIFEST, so a version this code rejects can be tested."""
     repository.save_manifest(MANIFEST)
     stored = json.loads(repository.manifest_path.read_text(encoding="utf-8"))
-    stored["schema_version"] = 2
+    stored.update(overrides)
     repository.manifest_path.write_text(json.dumps(stored), encoding="utf-8")
-    with pytest.raises(IndexArtifactInvalidError, match="is not a valid IndexManifest"):
+
+
+def test_a_manifest_of_another_schema_version_is_reported_as_incompatible(tmp_path: Path) -> None:
+    repository = FileIndexRepository(tmp_path)
+    store_manifest_with(repository, schema_version=2)
+    with pytest.raises(IndexIncompatibleError) as caught:
         repository.find_manifest()
+    message = str(caught.value)
+    assert "schema" in message
+    assert "2" in message
+    assert "1" in message
+
+
+def test_a_manifest_of_another_domain_model_version_is_reported_as_incompatible(tmp_path: Path) -> None:
+    repository = FileIndexRepository(tmp_path)
+    store_manifest_with(repository, domain_model_version=DOMAIN_MODEL_VERSION + 1)
+    with pytest.raises(IndexIncompatibleError, match="domain model"):
+        repository.find_manifest()
+
+
+def test_an_incompatible_index_is_a_repository_error_carrying_its_location(tmp_path: Path) -> None:
+    repository = FileIndexRepository(tmp_path)
+    store_manifest_with(repository, schema_version=2)
+    with pytest.raises(IndexRepositoryError) as caught:
+        repository.find_manifest()
+    assert isinstance(caught.value, IndexIncompatibleError)
+    assert caught.value.location == str(repository.manifest_path)
+
+
+def test_a_manifest_that_is_not_json_is_reported_as_invalid(tmp_path: Path) -> None:
+    repository = FileIndexRepository(tmp_path)
+    repository.save_manifest(MANIFEST)
+    repository.manifest_path.write_text("not json", encoding="utf-8")
+    with pytest.raises(IndexArtifactInvalidError, match="is not valid JSON"):
+        repository.find_manifest()
+
+
+def save_whole_index(repository: FileIndexRepository) -> None:
+    repository.save_chunks(CHUNKS)
+    repository.save_embeddings(CONSISTENT_TABLE)
+    repository.save_graph(GRAPH)
+    repository.save_manifest(MANIFEST)
+
+
+def test_the_whole_index_is_read_back_as_the_run_that_built_it(tmp_path: Path) -> None:
+    repository = FileIndexRepository(tmp_path)
+    save_whole_index(repository)
+    run = repository.find_index()
+    assert run.manifest == MANIFEST
+    assert run.chunks == CHUNKS
+    assert run.embeddings == CONSISTENT_TABLE
+    assert run.graph == GRAPH
+
+
+def test_reading_the_index_of_an_empty_data_directory_is_reported_as_not_found(tmp_path: Path) -> None:
+    with pytest.raises(IndexNotFoundError, match="manifest.json: not found"):
+        FileIndexRepository(tmp_path).find_index()
+
+
+def test_an_index_whose_build_did_not_write_the_manifest_is_reported_as_not_found(tmp_path: Path) -> None:
+    repository = FileIndexRepository(tmp_path)
+    save_whole_index(repository)
+    repository.manifest_path.unlink()
+    with pytest.raises(IndexNotFoundError, match="manifest.json: not found"):
+        repository.find_index()
+
+
+def test_a_manifest_disagreeing_with_the_saved_vectors_is_reported_as_invalid(tmp_path: Path) -> None:
+    repository = FileIndexRepository(tmp_path)
+    save_whole_index(repository)
+    repository.save_manifest(MANIFEST.model_copy(update={"embedding_dimension": 8}))
+    with pytest.raises(IndexArtifactInvalidError, match="do not belong together") as caught:
+        repository.find_index()
+    assert caught.value.location == str(tmp_path / "index")
+
+
+def test_an_incompatible_manifest_is_reported_before_the_missing_artifacts(tmp_path: Path) -> None:
+    repository = FileIndexRepository(tmp_path)
+    store_manifest_with(repository, schema_version=2)
+    with pytest.raises(IndexIncompatibleError, match="schema"):
+        repository.find_index()
 
 
 def test_the_paths_of_an_index_start_with_the_manifest(tmp_path: Path) -> None:

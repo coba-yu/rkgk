@@ -40,7 +40,11 @@ class IndexManifest(Entity):
 
 
 class IndexBuildRun(Entity):
-    """What one build produced: the manifest and the artifacts it wrote."""
+    """What one build produced and what search reads back: the manifest and the artifacts beside it.
+
+    Both directions go through the same object, so the cross-checks below also catch a stored index whose files
+    do not belong together, such as a manifest left over from a build that wrote other vectors.
+    """
 
     manifest: IndexManifest
     chunks: tuple[Chunk, ...]

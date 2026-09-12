@@ -7,7 +7,7 @@ from rkgk.domain.models.chunk import Chunk
 from rkgk.domain.models.concept_normalization import ConceptNormalization
 from rkgk.domain.models.embedding import EmbeddingTable
 from rkgk.domain.models.graph import KnowledgeGraph
-from rkgk.domain.models.manifest import IndexManifest
+from rkgk.domain.models.manifest import IndexBuildRun, IndexManifest
 from rkgk.domain.models.paper import Page, Paper, PaperIndexEntry, PaperMeta, PaperPreprocessInfo
 from rkgk.domain.models.paper_extraction import PaperExtraction
 from rkgk.domain.repositories.concept_normalization import ConceptNormalizationNotFoundError
@@ -122,3 +122,15 @@ class FakeIndexRepository:
         if self.manifest is None:
             raise IndexNotFoundError("manifest not found")
         return self.manifest
+
+    def find_index(self) -> IndexBuildRun:
+        # The manifest is checked first, the way the file-backed repository reads it first.
+        if self.manifest is None:
+            raise IndexNotFoundError("manifest not found")
+        if self.chunks is None:
+            raise IndexNotFoundError("chunks not found")
+        if self.table is None:
+            raise IndexNotFoundError("embeddings not found")
+        if self.graph is None:
+            raise IndexNotFoundError("graph not found")
+        return IndexBuildRun(manifest=self.manifest, chunks=self.chunks, embeddings=self.table, graph=self.graph)
