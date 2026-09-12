@@ -2,7 +2,7 @@
 
 from typing import Protocol
 
-from rkgk.domain.models.paper import Paper, PaperIndexEntry
+from rkgk.domain.models.paper import Paper, PaperIndexEntry, PaperMeta
 from rkgk.domain.repositories.base import RepositoryError
 
 
@@ -33,3 +33,8 @@ class PaperRepository(Protocol):
     def find_index(self) -> tuple[PaperIndexEntry, ...]: ...
 
     def find(self, paper_id: int) -> Paper: ...
+
+    # Separate from `find` because some callers (e.g. assembling a search result) only need the title and the
+    # S3 URI; reading every page for each of them would turn a candidate list into corpus-wide I/O, and a page
+    # missing for an unrelated reason would fail a search that never needed the page.
+    def find_meta(self, paper_id: int) -> PaperMeta: ...

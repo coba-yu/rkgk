@@ -12,6 +12,7 @@ from rkgk.domain.models.concept_normalization import (
 )
 from rkgk.domain.models.embedding import EmbeddedItemKind
 from rkgk.domain.models.manifest import EmbeddingModelMismatchError
+from rkgk.domain.models.paper import Paper
 from rkgk.domain.models.paper_extraction import (
     ExtractedConcept,
     ExtractedConceptEdge,
@@ -226,6 +227,13 @@ def build_use_case(index: FakeIndexRepository, embedder: ScriptedEmbedder) -> Se
     )
 
 
+class MetaOnlyPaperRepository(FakePaperRepository):
+    """Fails the test the moment a page would be read, so a regression back to `find` shows up as a failure."""
+
+    def find(self, paper_id: int) -> Paper:
+        raise AssertionError(f"find({paper_id}) reads every page and must not be called while building a result")
+
+
 def describe_paths(paths: Sequence[TraversalPath]) -> list[tuple[int, str, tuple[str, ...]]]:
     """Each path as (source paper, concept left by, concepts hopped to); every path ends at the candidate."""
     return [
@@ -299,6 +307,16 @@ def test_the_queries_and_the_configuration_are_recorded_in_the_result() -> None:
 def test_the_s3_uri_is_listed_for_a_paper_that_has_one_and_is_none_for_a_paper_that_has_not() -> None:
     result = search(top_k=2, generic_concept_threshold=FOLLOW_EVERY_CONCEPT)
     assert [candidate.s3_uri for candidate in result.direct_candidates] == [S3_URI_OF_PAPER_1, None]
+
+
+def test_building_the_result_never_reads_a_paper_page() -> None:
+    embedder = ScriptedEmbedder(SCRIPT)
+    index = build_index(embedder)
+    use_case = SearchPapersUseCase(
+        MetaOnlyPaperRepository(PAPERS), FakePaperExtractionRepository(*EXTRACTIONS), index, embedder
+    )
+    result = use_case.execute([QUERY_RAG], SearchConfig(top_k=2, generic_concept_threshold=FOLLOW_EVERY_CONCEPT))
+    assert [candidate.paper_id for candidate in result.direct_candidates] == [1, 3]
 
 
 def test_an_embedder_of_another_model_than_the_index_is_reported_before_a_query_is_embedded() -> None:

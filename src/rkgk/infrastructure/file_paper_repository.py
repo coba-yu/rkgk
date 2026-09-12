@@ -82,10 +82,19 @@ class FilePaperRepository:
 
     def find(self, paper_id: int) -> Paper:
         paper_dir = self._papers_dir / build_paper_dir_name(paper_id)
+        meta = self._find_meta_in(paper_dir, paper_id)
+        return Paper(meta=meta, pages=self._read_pages(paper_dir, meta))
+
+    def find_meta(self, paper_id: int) -> PaperMeta:
+        # Stops at paper.json and never opens pages/, so a caller that only wants the title or the S3 URI does
+        # not pay for reading and validating every page, and a missing page cannot fail this call.
+        paper_dir = self._papers_dir / build_paper_dir_name(paper_id)
+        return self._find_meta_in(paper_dir, paper_id)
+
+    def _find_meta_in(self, paper_dir: Path, paper_id: int) -> PaperMeta:
         if not paper_dir.is_dir():
             raise _fail(PaperNotFoundError, paper_dir, "paper directory not found", paper_id)
-        meta = self._read_meta(paper_dir, paper_id)
-        return Paper(meta=meta, pages=self._read_pages(paper_dir, meta))
+        return self._read_meta(paper_dir, paper_id)
 
     def _read_meta(self, paper_dir: Path, paper_id: int) -> PaperMeta:
         path = paper_dir / META_FILE_NAME

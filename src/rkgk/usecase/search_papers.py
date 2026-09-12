@@ -9,6 +9,8 @@ A path that reaches a paper vector search already found is moved onto that paper
 paper is listed once in the result and traversal has no way of knowing what vector search found.
 The titles, the S3 URIs and the Japanese summaries are joined in last, because they live in the paper and
 extraction artifacts rather than in the index.
+Only the paper metadata is read for that join, never the pages, because a result lists many candidates and
+reading every page of each one would be corpus-wide I/O for details the result never shows.
 """
 
 from collections.abc import Sequence
@@ -94,8 +96,13 @@ class SearchPapersUseCase:
     def _build_candidate(
         self, paper_id: int, hits: tuple[EmbeddedItemHit, ...], paths: tuple[TraversalPath, ...]
     ) -> PaperCandidate:
-        """Join what led to the paper with what the paper is, reading each artifact of it once."""
-        meta = self._paper_repository.find(paper_id).meta
+        """Join what led to the paper with what the paper is, reading each artifact of it once.
+
+        `find_meta` rather than `find`: only the title and the S3 URI are needed here, and this runs once per
+        candidate, so reading every page of every candidate would make a result list cost corpus-wide I/O and
+        would fail the whole search over a page missing for a paper the search never needed to open.
+        """
+        meta = self._paper_repository.find_meta(paper_id)
         extraction = self._extraction_repository.find(paper_id)
         return PaperCandidate(
             paper_id=paper_id,

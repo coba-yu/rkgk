@@ -49,6 +49,11 @@ class FakePaperRepository:
             raise PaperNotFoundError(f"paper {paper_id}: paper directory not found", paper_id=paper_id)
         return self._papers[paper_id]
 
+    def find_meta(self, paper_id: int) -> PaperMeta:
+        if paper_id not in self._papers:
+            raise PaperNotFoundError(f"paper {paper_id}: paper directory not found", paper_id=paper_id)
+        return self._papers[paper_id].meta
+
 
 class FakePaperExtractionRepository:
     """Holds the extractions a test starts with, and records every extraction the use case saves."""
