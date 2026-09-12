@@ -19,7 +19,7 @@ from rkgk.domain.models.search import ConceptHop, EmbeddedItemHit, PaperCandidat
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILL_DIR = REPO_ROOT / ".agents" / "skills" / "rkgk-search-papers"
 SKILL_PATH = SKILL_DIR / "SKILL.md"
-CLAUDE_SKILL_LINK = REPO_ROOT / ".claude" / "skills" / "rkgk-search-papers"
+CLAUDE_SKILL_PATH = REPO_ROOT / ".claude" / "skills" / "rkgk-search-papers" / "SKILL.md"
 ENV_TEMPLATE_PATH = REPO_ROOT / ".env.example"
 
 # The skill also documents `uv run --extra ...` and `aws s3 sync --exclude ... --delete`, so these long options belong
@@ -177,6 +177,16 @@ def test_every_variable_of_the_env_template_is_mentioned_in_the_skill() -> None:
         assert f"`{name}`" in text, f"{name} is declared in .env.example but missing from the skill"
 
 
-def test_the_claude_skills_link_resolves_to_the_agents_skills_directory() -> None:
-    assert CLAUDE_SKILL_LINK.is_symlink()
-    assert CLAUDE_SKILL_LINK.resolve() == SKILL_DIR.resolve()
+def test_the_claude_code_skill_points_at_the_shared_skill_under_the_same_name() -> None:
+    """Claude Code reads `.claude/skills/` only, so a short skill there must hand over to the shared one for Codex.
+
+    The name and the description are what Claude Code triggers on, so they must be the same as the shared skill's,
+    and the body must name the shared file so the agent knows where the instructions are.
+    """
+    claude_text = CLAUDE_SKILL_PATH.read_text(encoding="utf-8")
+    shared = parse_frontmatter(read_skill())
+    pointer = parse_frontmatter(claude_text)
+    assert pointer["name"] == shared["name"]
+    assert pointer["description"] == shared["description"]
+    assert f"`{SKILL_PATH.relative_to(REPO_ROOT)}`" in claude_text
+    assert claude_text.endswith("\n")
