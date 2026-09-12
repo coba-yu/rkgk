@@ -14,14 +14,14 @@ import subprocess
 from pathlib import Path
 
 from rkgk.cli._shared import EXIT_ERROR, EXIT_INVALID, EXIT_OK
-from rkgk.cli.search import NAME, _build_parser
+from rkgk.cli.search import _build_parser
 from rkgk.domain.models.graph import ChunkEvidence, ConceptEdge, PaperConceptEdge
 from rkgk.domain.models.search import ConceptHop, EmbeddedItemHit, PaperCandidate, SearchResult, TraversalPath
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-SKILL_DIR = REPO_ROOT / ".agents" / "skills" / "search"
+SKILL_DIR = REPO_ROOT / ".agents" / "skills" / "rkgk-search-papers"
 SKILL_PATH = SKILL_DIR / "SKILL.md"
-CLAUDE_SKILL_LINK = REPO_ROOT / ".claude" / "skills" / "search"
+CLAUDE_SKILL_LINK = REPO_ROOT / ".claude" / "skills" / "rkgk-search-papers"
 
 # uv's own flag, spent on "uv run --extra embedding ..." before the command name ever appears, so it is not a
 # long option of `_build_parser()` and must not be checked against it like one.
@@ -167,13 +167,14 @@ def test_every_result_model_field_is_mentioned_in_the_skill_in_backticks() -> No
             )
 
 
-def test_the_skill_frontmatter_name_matches_the_directory_and_the_command() -> None:
+def test_the_skill_frontmatter_name_matches_the_directory() -> None:
     frontmatter = parse_frontmatter(read_skill())
+    # A loader keys the skill by the frontmatter name, so a directory renamed without its name would leave two
+    # names for one skill; the command name is not part of this, because the skill is named after what it does.
     assert frontmatter["name"] == SKILL_DIR.name
-    assert frontmatter["name"] == NAME
 
 
-def test_the_claude_skills_search_link_resolves_to_the_agents_skills_search_directory() -> None:
+def test_the_claude_skills_link_resolves_to_the_agents_skills_directory() -> None:
     assert CLAUDE_SKILL_LINK.is_symlink()
     assert CLAUDE_SKILL_LINK.resolve() == SKILL_DIR.resolve()
 
