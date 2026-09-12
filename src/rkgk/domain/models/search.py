@@ -14,7 +14,7 @@ from pydantic import Field, field_validator, model_validator
 
 from rkgk.domain.models.base import Entity, Slug
 from rkgk.domain.models.embedding import EmbeddedItemKind
-from rkgk.domain.models.vocabulary import ConceptRelationType, Origin, PaperConceptRelation
+from rkgk.domain.models.graph import ConceptEdge, PaperConceptEdge
 
 
 class SearchConfig(Entity):
@@ -71,63 +71,71 @@ class PaperHits(Entity):
 
 
 class ConceptHop(Entity):
-    """One concept relation followed on a path, recorded as the edge reads: `source_id relation target_id`.
+    """One concept edge followed on a path, and the concept the path arrived at.
 
-    A path may follow an edge against its direction, so the edge is kept as the graph stores it and the concept
-    the hop arrived at is named separately; a reader can then say "X is_a Y" the way the graph says it.
-    The origin travels with the hop so a path through a general-knowledge edge is shown as unverified while a
-    path through a paper-origin edge can quote the paper.
+    The edge is kept whole, evidence and rationale included, so a result can quote the paper behind a paper-origin
+    hop and mark a general-knowledge hop as unverified without opening the graph again; keeping the edge also keeps
+    two hops apart when two papers assert the same relation, because the graph stores those as two edges.
+    A path may follow an edge against its direction, so the concept it arrived at is named separately and a reader
+    can still say "X is_a Y" the way the graph says it.
     """
 
-    source_id: Slug
-    target_id: Slug
-    relation: ConceptRelationType
-    origin: Origin
+    edge: ConceptEdge
     reached_concept_id: Slug
 
     @model_validator(mode="after")
     def _check_reached_end(self) -> Self:
-        if self.source_id == self.target_id:
-            raise ValueError("source_id and target_id must differ")
-        if self.reached_concept_id not in (self.source_id, self.target_id):
-            raise ValueError(f"reached_concept_id must be {self.source_id!r} or {self.target_id!r}")
+        if self.reached_concept_id not in (self.edge.source_id, self.edge.target_id):
+            raise ValueError(f"reached_concept_id must be {self.edge.source_id!r} or {self.edge.target_id!r}")
         return self
 
     @property
     def departed_concept_id(self) -> str:
-        return self.target_id if self.reached_concept_id == self.source_id else self.source_id
+        return self.edge.target_id if self.reached_concept_id == self.edge.source_id else self.edge.source_id
 
 
 class TraversalPath(Entity):
-    """How one paper was reached: source paper -> concept [-> relation -> concept]... -> reached paper.
+    """How one paper was reached: source paper -edge-> concept [-edge-> concept]... -edge-> reached paper.
 
-    The paper-to-concept edges at both ends always come from the papers themselves, so only the hops between
-    concepts carry an origin.
-    The reached paper is the candidate that holds the path, so it is not repeated here.
+    Every step is a graph edge kept whole, so the paper-to-concept ends carry their quotes too and a reader can
+    check each claim of the path against the paper it came from.
     """
 
-    source_paper_id: int = Field(ge=1)
-    source_relation: PaperConceptRelation
-    concept_id: Slug
+    source_edge: PaperConceptEdge
     hops: tuple[ConceptHop, ...] = ()
-    target_relation: PaperConceptRelation
+    target_edge: PaperConceptEdge
 
     @model_validator(mode="after")
-    def _check_hops_form_a_chain(self) -> Self:
-        """Each hop must depart from the concept the path stood on, so a path cannot skip a node."""
-        current = self.concept_id
+    def _check_edges_form_a_chain(self) -> Self:
+        """Each step must leave from the concept the path stands on, so a path cannot skip a node or loop back."""
+        if self.source_edge.paper_id == self.target_edge.paper_id:
+            raise ValueError(f"a path must not lead from paper {self.source_edge.paper_id} back to itself")
+        current = self.source_edge.concept_id
         for position, hop in enumerate(self.hops, start=1):
             if hop.departed_concept_id != current:
                 raise ValueError(
-                    f"hop {position} joins {hop.source_id!r} and {hop.target_id!r} but the path stands on {current!r}"
+                    f"hop {position} joins {hop.edge.source_id!r} and {hop.edge.target_id!r} "
+                    f"but the path stands on {current!r}"
                 )
             current = hop.reached_concept_id
+        if self.target_edge.concept_id != current:
+            raise ValueError(
+                f"target_edge is attached to {self.target_edge.concept_id!r} but the path stands on {current!r}"
+            )
         return self
+
+    @property
+    def source_paper_id(self) -> int:
+        return self.source_edge.paper_id
+
+    @property
+    def reached_paper_id(self) -> int:
+        return self.target_edge.paper_id
 
     @property
     def reached_concept_id(self) -> str:
         """The concept the reached paper is attached to: the last hop's end, or the first concept without hops."""
-        return self.hops[-1].reached_concept_id if self.hops else self.concept_id
+        return self.target_edge.concept_id
 
 
 class PaperCandidate(Entity):
@@ -135,7 +143,7 @@ class PaperCandidate(Entity):
 
     A direct candidate holds at least one hit and may also hold paths, because a paper found by vector search is
     still worth explaining through the graph; a graph candidate holds paths only.
-    Either way a paper never reaches itself, so no path may start at the paper that holds it.
+    Every path ends at this paper, so the reached paper is not repeated outside the path.
     """
 
     paper_id: int = Field(ge=1)
@@ -157,8 +165,8 @@ class PaperCandidate(Entity):
             seen_hits.add(key)
         seen_paths: set[TraversalPath] = set()
         for path in self.paths:
-            if path.source_paper_id == self.paper_id:
-                raise ValueError(f"paths must not start at the candidate paper {self.paper_id}")
+            if path.reached_paper_id != self.paper_id:
+                raise ValueError(f"paths must end at the candidate paper {self.paper_id}, not {path.reached_paper_id}")
             if path in seen_paths:
                 raise ValueError(f"paths repeats a path from paper {path.source_paper_id}")
             seen_paths.add(path)
