@@ -21,9 +21,9 @@ SKILL_DIR = REPO_ROOT / ".agents" / "skills" / "rkgk-search-papers"
 SKILL_PATH = SKILL_DIR / "SKILL.md"
 CLAUDE_SKILL_LINK = REPO_ROOT / ".claude" / "skills" / "rkgk-search-papers"
 
-# uv's own flag, spent on "uv run --extra embedding ..." before the command name ever appears, so it is not a
-# long option of `_build_parser()` and must not be checked against it like one.
-UV_OWN_LONG_OPTIONS = frozenset({"--extra"})
+# The skill also documents `uv run --extra ...` and `aws s3 sync --exclude ... --delete`, so these long options belong
+# to those commands and must not be checked against `_build_parser()` like an option of `search`.
+FOREIGN_LONG_OPTIONS = frozenset({"--extra", "--exclude", "--delete"})
 
 LONG_OPTION_PATTERN = re.compile(r"--[a-z][a-z0-9-]*")
 BACKTICK_SPAN_PATTERN = re.compile(r"`([^`]+)`")
@@ -111,11 +111,10 @@ def collect_option_strings(parser: argparse.ArgumentParser) -> dict[str, argpars
     return parser._option_string_actions
 
 
-
 def test_every_long_option_in_the_skill_is_an_option_of_the_parser() -> None:
     parser = _build_parser()
     option_strings = collect_option_strings(parser)
-    documented = collect_long_options(read_skill()) - UV_OWN_LONG_OPTIONS
+    documented = collect_long_options(read_skill()) - FOREIGN_LONG_OPTIONS
     for option in documented:
         assert option in option_strings, f"{option} is documented but not an option of the search parser"
 
@@ -167,4 +166,3 @@ def test_the_skill_frontmatter_name_matches_the_directory() -> None:
 def test_the_claude_skills_link_resolves_to_the_agents_skills_directory() -> None:
     assert CLAUDE_SKILL_LINK.is_symlink()
     assert CLAUDE_SKILL_LINK.resolve() == SKILL_DIR.resolve()
-
