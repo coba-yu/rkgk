@@ -1,16 +1,14 @@
-"""What keeps the search Agent Skill and the Makefile from drifting away from the `search` command.
+"""What keeps the search Agent Skill from drifting away from the `search` command.
 
 The skill is prose an agent reads, not code the parser checks, so nothing stops an option, a field name or an
 exit code from changing in `rkgk.cli.search` while `SKILL.md` keeps describing the old one.
-These tests read the parser, the result models and the Makefile as the source of truth and check the skill
-document, and the Makefile's own dry run, against them.
+These tests read the parser and the result models as the source of truth and check the skill document
+against them.
 """
 
 import argparse
-import os
 import re
 import shlex
-import subprocess
 from pathlib import Path
 
 from rkgk.cli._shared import EXIT_ERROR, EXIT_INVALID, EXIT_OK
@@ -113,14 +111,6 @@ def collect_option_strings(parser: argparse.ArgumentParser) -> dict[str, argpars
     return parser._option_string_actions
 
 
-def run_make(*args: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        ["make", "-C", str(REPO_ROOT), "--no-print-directory", *args],
-        capture_output=True,
-        text=True,
-        env=env,
-    )
-
 
 def test_every_long_option_in_the_skill_is_an_option_of_the_parser() -> None:
     parser = _build_parser()
@@ -178,25 +168,3 @@ def test_the_claude_skills_link_resolves_to_the_agents_skills_directory() -> Non
     assert CLAUDE_SKILL_LINK.is_symlink()
     assert CLAUDE_SKILL_LINK.resolve() == SKILL_DIR.resolve()
 
-
-def test_make_s3_pull_dry_run_syncs_from_the_s3_uri_to_the_data_dir() -> None:
-    result = run_make("-n", "s3-pull", "RKGK_S3_URI=s3://bucket/rkgk")
-    assert result.returncode == 0
-    assert "aws s3 sync s3://bucket/rkgk/ data/" in result.stdout
-
-
-def test_make_s3_push_dry_run_syncs_from_the_data_dir_to_the_s3_uri() -> None:
-    result = run_make("-n", "s3-push", "RKGK_S3_URI=s3://bucket/rkgk")
-    assert result.returncode == 0
-    assert "aws s3 sync data/ s3://bucket/rkgk/" in result.stdout
-
-
-def test_make_s3_pull_without_the_s3_uri_fails_before_syncing_anything() -> None:
-    # -n only prints recipes without running them, so the guard clause of require-s3-uri never actually runs and
-    # the dry run always reports success; the missing-variable path only shows up in a real run, which is safe
-    # here because make aborts the s3-pull chain at the failing prerequisite, before the recipe that calls aws.
-    env = dict(os.environ)
-    env.pop("RKGK_S3_URI", None)
-    result = run_make("s3-pull", env=env)
-    assert result.returncode != 0
-    assert "RKGK_S3_URI" in result.stderr

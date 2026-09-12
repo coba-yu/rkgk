@@ -13,8 +13,21 @@ description: 日本語のテーマから次に読む英語論文を探す。「�
 
 - リポジトリのルートで実行する。
 - `data/index/` に構築済みの index があること。
-  無ければ `make s3-pull` で取得するか、`uv run --extra embedding build` で構築するようユーザーに案内し、検索の途中で `extract` / `normalize` / `build` を実行しない。
+  無ければ S3 から取得するか、`uv run --extra embedding build` で構築するようユーザーに案内し、検索の途中で `extract` / `normalize` / `build` を実行しない。
 - 埋め込みモデル（Qwen3）を使うため、`uv run --extra embedding` で起動する。
+
+## S3 との同期（参考コマンド）
+
+`data/` は S3 の base URI 配下と同じ構造で、base URI は環境変数 `RKGK_S3_URI`（`s3://bucket/prefix`）で渡す。
+index が無いとき、または抽出結果や index を S3 に戻すときに、ユーザーの依頼を受けてから次を実行する。
+
+```
+aws s3 sync "$RKGK_S3_URI/" data/ --exclude '*.pdf' --exclude '*.DS_Store'
+aws s3 sync data/ "$RKGK_S3_URI/" --exclude '*.DS_Store'
+```
+
+取得では原本 PDF を除外する。検索は原本を開かないため。
+どちらの向きも `--delete` を付けず、片側で消えたファイルをもう片側から消さない。
 
 ## 手順
 
@@ -73,7 +86,7 @@ uv run --extra embedding search "検索拡張生成の評価" "retrieval-augment
 | `source_edge` / `target_edge` | `paper_id`, `concept_id`, `relation`（`proposes` / `uses` / `addresses`）, `evidence[]`（`page`, `quote`, `chunk_id`） |
 | `hops[].edge` | `source_id`, `target_id`, `relation`（`is_a` / `part_of` / `used_for` / `related_to`）, `origin`（`paper` / `general_knowledge`）, `paper_id`, `evidence[]`, `rationale` |
 
-`s3_uri` が `null` の論文は、`RKGK_S3_URI` 環境変数（`make s3-pull` と同じ base URI）と `paper_id` から `$RKGK_S3_URI/papers/0001/paper.pdf` の形で組み立てる。
+`s3_uri` が `null` の論文は、環境変数 `RKGK_S3_URI` と `paper_id` から `$RKGK_S3_URI/papers/0001/paper.pdf` の形で組み立てる。
 `RKGK_S3_URI` も無ければ、リンク無しで報告する。
 
 ### 5. 読むべき理由を書く
