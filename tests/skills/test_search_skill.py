@@ -1,0 +1,201 @@
+"""What keeps the search Agent Skill and the Makefile from drifting away from the `search` command.
+
+The skill is prose an agent reads, not code the parser checks, so nothing stops an option, a field name or an
+exit code from changing in `rkgk.cli.search` while `SKILL.md` keeps describing the old one.
+These tests read the parser, the result models and the Makefile as the source of truth and check the skill
+document, and the Makefile's own dry run, against them.
+"""
+
+import argparse
+import os
+import re
+import shlex
+import subprocess
+from pathlib import Path
+
+from rkgk.cli._shared import EXIT_ERROR, EXIT_INVALID, EXIT_OK
+from rkgk.cli.search import NAME, _build_parser
+from rkgk.domain.models.graph import ChunkEvidence, ConceptEdge, PaperConceptEdge
+from rkgk.domain.models.search import ConceptHop, EmbeddedItemHit, PaperCandidate, SearchResult, TraversalPath
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+SKILL_DIR = REPO_ROOT / ".agents" / "skills" / "search"
+SKILL_PATH = SKILL_DIR / "SKILL.md"
+CLAUDE_SKILL_LINK = REPO_ROOT / ".claude" / "skills" / "search"
+
+# uv's own flag, spent on "uv run --extra embedding ..." before the command name ever appears, so it is not a
+# long option of `_build_parser()` and must not be checked against it like one.
+UV_OWN_LONG_OPTIONS = frozenset({"--extra"})
+
+LONG_OPTION_PATTERN = re.compile(r"--[a-z][a-z0-9-]*")
+BACKTICK_SPAN_PATTERN = re.compile(r"`([^`]+)`")
+
+FIELD_OWNERS = (
+    SearchResult,
+    PaperCandidate,
+    EmbeddedItemHit,
+    TraversalPath,
+    ConceptHop,
+    PaperConceptEdge,
+    ConceptEdge,
+    ChunkEvidence,
+)
+
+
+def read_skill() -> str:
+    return SKILL_PATH.read_text(encoding="utf-8")
+
+
+def parse_frontmatter(text: str) -> dict[str, str]:
+    """Read the `key: value` lines between the leading `---` markers, the same block a skill loader reads."""
+    lines = text.splitlines()
+    assert lines[0] == "---", "SKILL.md must open with a frontmatter block"
+    closing = lines[1:].index("---") + 1
+    fields: dict[str, str] = {}
+    for line in lines[1:closing]:
+        key, _, value = line.partition(":")
+        fields[key.strip()] = value.strip()
+    return fields
+
+
+def collect_long_options(text: str) -> set[str]:
+    """Pull every `--long-option` token out of the whole document, prose and tables included."""
+    return set(LONG_OPTION_PATTERN.findall(text))
+
+
+def strip_fenced_code_blocks(text: str) -> str:
+    """Drop every ``` ... ``` block, so a triple backtick fence cannot desync single-backtick pair matching.
+
+    A fence is itself three backticks, which throws off the parity a `` `...` `` regex relies on for everything
+    that follows it in the file; the prose outside fences is what documents the field names anyway.
+    """
+    kept: list[str] = []
+    in_fence = False
+    for line in text.splitlines():
+        if line.startswith("```"):
+            in_fence = not in_fence
+            continue
+        if not in_fence:
+            kept.append(line)
+    return "\n".join(kept)
+
+
+def collect_backtick_spans(text: str) -> list[str]:
+    """Pull the contents of every backtick pair outside fenced code blocks, to check a field name is one of them."""
+    return BACKTICK_SPAN_PATTERN.findall(strip_fenced_code_blocks(text))
+
+
+def collect_command_lines(text: str) -> list[str]:
+    """Pull the argument text of every documented `search` invocation out of the fenced code blocks.
+
+    A fence can hold a shell session or a made-up path, so only the lines that actually invoke the command are
+    worth parsing; everything past "search " is what a caller would type after the command name.
+    """
+    prefixes = ("uv run --extra embedding search ", "uv run search ")
+    lines: list[str] = []
+    in_fence = False
+    for line in text.splitlines():
+        if line.startswith("```"):
+            in_fence = not in_fence
+            continue
+        if not in_fence:
+            continue
+        for prefix in prefixes:
+            if line.startswith(prefix):
+                lines.append(line[len(prefix) :])
+                break
+    return lines
+
+
+def collect_option_strings(parser: argparse.ArgumentParser) -> dict[str, argparse.Action]:
+    # _option_string_actions is private, but argparse keeps no public way to list every registered option
+    # string; parsing --help text back into option names would be a worse way to get the same mapping.
+    return parser._option_string_actions
+
+
+def run_make(*args: str, env: dict[str, str] | None = None) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        ["make", "-C", str(REPO_ROOT), "--no-print-directory", *args],
+        capture_output=True,
+        text=True,
+        env=env,
+    )
+
+
+def test_every_long_option_in_the_skill_is_an_option_of_the_parser() -> None:
+    parser = _build_parser()
+    option_strings = collect_option_strings(parser)
+    documented = collect_long_options(read_skill()) - UV_OWN_LONG_OPTIONS
+    for option in documented:
+        assert option in option_strings, f"{option} is documented but not an option of the search parser"
+
+
+def test_every_parser_option_except_help_and_version_is_mentioned_in_the_skill() -> None:
+    parser = _build_parser()
+    option_strings = collect_option_strings(parser)
+    text = read_skill()
+    long_options = {option for option in option_strings if option.startswith("--")}
+    for option in long_options - {"--help", "--version"}:
+        assert option in text, f"{option} is an option of the search parser but missing from the skill"
+
+
+def test_every_documented_search_invocation_parses() -> None:
+    parser = _build_parser()
+    command_lines = collect_command_lines(read_skill())
+    assert command_lines, "the skill must document at least one search invocation to check"
+    for rest in command_lines:
+        # parse_args exits the process on a usage error, so a plain call here is enough to prove the line is valid.
+        parser.parse_args(shlex.split(rest))
+
+
+def test_the_skill_documents_the_same_status_words_and_exit_codes_as_the_code() -> None:
+    text = read_skill()
+    for word in ("ok", "invalid", "error", "embedding_model_mismatch"):
+        assert f"`{word}`" in text, f"{word!r} is missing from the skill"
+    for code, word in ((EXIT_OK, "ok"), (EXIT_INVALID, "invalid"), (EXIT_ERROR, "error")):
+        row_start = f"| {code} | `{word}` |"
+        assert row_start in text, f"the skill's status table row for {word!r} does not start with {row_start!r}"
+
+
+def test_every_result_model_field_is_mentioned_in_the_skill_in_backticks() -> None:
+    text = read_skill()
+    spans = collect_backtick_spans(text)
+    for model in FIELD_OWNERS:
+        for field_name in model.model_fields:
+            assert any(field_name in span for span in spans), (
+                f"{model.__name__}.{field_name} is not wrapped in backticks anywhere in the skill"
+            )
+
+
+def test_the_skill_frontmatter_name_matches_the_directory_and_the_command() -> None:
+    frontmatter = parse_frontmatter(read_skill())
+    assert frontmatter["name"] == SKILL_DIR.name
+    assert frontmatter["name"] == NAME
+
+
+def test_the_claude_skills_search_link_resolves_to_the_agents_skills_search_directory() -> None:
+    assert CLAUDE_SKILL_LINK.is_symlink()
+    assert CLAUDE_SKILL_LINK.resolve() == SKILL_DIR.resolve()
+
+
+def test_make_s3_pull_dry_run_syncs_from_the_s3_uri_to_the_data_dir() -> None:
+    result = run_make("-n", "s3-pull", "RKGK_S3_URI=s3://bucket/rkgk")
+    assert result.returncode == 0
+    assert "aws s3 sync s3://bucket/rkgk/ data/" in result.stdout
+
+
+def test_make_s3_push_dry_run_syncs_from_the_data_dir_to_the_s3_uri() -> None:
+    result = run_make("-n", "s3-push", "RKGK_S3_URI=s3://bucket/rkgk")
+    assert result.returncode == 0
+    assert "aws s3 sync data/ s3://bucket/rkgk/" in result.stdout
+
+
+def test_make_s3_pull_without_the_s3_uri_fails_before_syncing_anything() -> None:
+    # -n only prints recipes without running them, so the guard clause of require-s3-uri never actually runs and
+    # the dry run always reports success; the missing-variable path only shows up in a real run, which is safe
+    # here because make aborts the s3-pull chain at the failing prerequisite, before the recipe that calls aws.
+    env = dict(os.environ)
+    env.pop("RKGK_S3_URI", None)
+    result = run_make("s3-pull", env=env)
+    assert result.returncode != 0
+    assert "RKGK_S3_URI" in result.stderr
