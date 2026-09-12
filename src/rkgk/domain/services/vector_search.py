@@ -13,7 +13,7 @@ from numpy.typing import NDArray
 
 from rkgk.domain.models.embedding import EmbeddedItem, EmbeddedItemKind, EmbeddingTable
 from rkgk.domain.models.graph import KnowledgeGraph
-from rkgk.domain.models.search import PaperHits, SearchHit
+from rkgk.domain.models.search import EmbeddedItemHit, PaperHits
 from rkgk.domain.models.vocabulary import traversable_paper_relations
 
 
@@ -52,11 +52,11 @@ def search_vectors(
     scores = compute_cosine_scores(np.asarray(table.vectors, dtype=np.float32), query_vectors)
     papers_by_concept = map_concepts_to_papers(graph)
 
-    hits_by_paper: dict[int, list[SearchHit]] = {}
+    hits_by_paper: dict[int, list[EmbeddedItemHit]] = {}
     for query, row in zip(queries, scores, strict=True):
         for index in rank_top_rows(row, top_k):
             item = table.items[index]
-            hit = SearchHit(kind=item.kind, ref=item.ref, query=query, score=float(row[index]), text=item.text)
+            hit = EmbeddedItemHit(kind=item.kind, ref=item.ref, query=query, score=float(row[index]), text=item.text)
             for paper_id in find_papers_of_item(item, papers_by_concept):
                 hits_by_paper.setdefault(paper_id, []).append(hit)
 

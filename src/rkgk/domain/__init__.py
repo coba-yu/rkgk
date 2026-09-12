@@ -60,10 +60,10 @@ from rkgk.domain.models.paper_extraction import (
 )
 from rkgk.domain.models.search import (
     ConceptHop,
+    EmbeddedItemHit,
     PaperCandidate,
     PaperHits,
     SearchConfig,
-    SearchHit,
     SearchResult,
     TraversalPath,
 )
@@ -207,7 +207,7 @@ __all__ = [
     "PaperRepositoryError",
     "RelationSpec",
     "SearchConfig",
-    "SearchHit",
+    "EmbeddedItemHit",
     "SearchResult",
     "Slug",
     "StructuredOutputAgent",

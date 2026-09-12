@@ -4,10 +4,10 @@ from pydantic import ValidationError
 from rkgk.domain.models.embedding import EmbeddedItemKind
 from rkgk.domain.models.search import (
     ConceptHop,
+    EmbeddedItemHit,
     PaperCandidate,
     PaperHits,
     SearchConfig,
-    SearchHit,
     SearchResult,
     TraversalPath,
 )
@@ -27,7 +27,7 @@ def build_config(**overrides: object) -> SearchConfig:
     return SearchConfig.model_validate(payload)
 
 
-def build_hit(**overrides: object) -> SearchHit:
+def build_hit(**overrides: object) -> EmbeddedItemHit:
     payload: dict[str, object] = {
         "kind": EmbeddedItemKind.CHUNK,
         "ref": "1:0",
@@ -36,7 +36,7 @@ def build_hit(**overrides: object) -> SearchHit:
         "text": "Retrieval improves recall by finding relevant passages.",
     }
     payload.update(overrides)
-    return SearchHit.model_validate(payload)
+    return EmbeddedItemHit.model_validate(payload)
 
 
 def build_paper_hits(**overrides: object) -> PaperHits:
@@ -124,7 +124,7 @@ def test_search_config_rejects_a_non_positive_top_k() -> None:
         build_config(top_k=0)
 
 
-# SearchHit
+# EmbeddedItemHit
 
 
 def test_a_hit_builds_with_its_score_and_text() -> None:

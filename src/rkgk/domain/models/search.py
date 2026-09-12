@@ -26,7 +26,7 @@ class SearchConfig(Entity):
     top_k: int = Field(default=10, ge=1)
 
 
-class SearchHit(Entity):
+class EmbeddedItemHit(Entity):
     """One embedded item that one query landed on, with the score and the text that matched.
 
     `kind` and `ref` name the item the way the embedding table does, so the chunk, the summary or the concept
@@ -57,7 +57,7 @@ class PaperHits(Entity):
     """
 
     paper_id: int = Field(ge=1)
-    hits: tuple[SearchHit, ...] = Field(min_length=1)
+    hits: tuple[EmbeddedItemHit, ...] = Field(min_length=1)
 
     @model_validator(mode="after")
     def _reject_repeated_hits(self) -> Self:
@@ -142,7 +142,7 @@ class PaperCandidate(Entity):
     title: str = Field(min_length=1)
     s3_uri: str = Field(min_length=1)
     summary_ja: str = Field(min_length=1)
-    hits: tuple[SearchHit, ...] = ()
+    hits: tuple[EmbeddedItemHit, ...] = ()
     paths: tuple[TraversalPath, ...] = ()
 
     @model_validator(mode="after")
