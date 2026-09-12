@@ -1,5 +1,5 @@
 ---
-name: search
+name: rkgk-search-papers
 description: 日本語のテーマから次に読む英語論文を探す。「〜の論文を探して」「〜について次に読む論文は」「〜に関連する論文」と言われたら使う。英語クエリを作って `uv run search` を実行し、候補を S3 リンク・日本語要約・読むべき理由・到達経路付きで報告する。
 ---
 
@@ -53,7 +53,7 @@ uv run --extra embedding search "検索拡張生成の評価" "retrieval-augment
 | 終了コード | `status` | 対応 |
 | --- | --- | --- |
 | 0 | `ok` | 手順 4 へ進む |
-| 1 | `invalid` | `reason` が `embedding_model_mismatch` なら、`index_model` を `--embedding-model` に渡して再実行するか、index の再構築を案内する |
+| 1 | `invalid` | `reason` が `embedding_model_mismatch` なら、`index_model` に合う embedder を選び直す。`index_model` が `fake-8` なら `--embedder fake`、それ以外なら `--embedder qwen3` にし、`--embedding-model` は省略して manifest に任せる。`--embedder fake` のときは `--embedding-model` は無視されるので、それを変えても直らない。それでも合わなければ index の再構築を案内する |
 | 2 | `error` | `message` をそのまま伝える。index が無い、manifest の `schema_version` が非対応、モデルが読めない、クエリが空か重複、のいずれか |
 
 ### 4. JSON を読む
