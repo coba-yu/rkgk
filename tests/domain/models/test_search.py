@@ -8,11 +8,12 @@ from rkgk.domain.models.search import (
     EmbeddedItemHit,
     PaperCandidate,
     PaperHits,
+    PaperPaths,
     SearchConfig,
     SearchResult,
     TraversalPath,
 )
-from rkgk.domain.models.vocabulary import ConceptRelationType, Origin, PaperConceptRelation
+from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType, Origin, PaperConceptRelation
 
 QUERY_RETRIEVAL = "検索手法についての論文を探したい"
 QUERY_DENSE = "密なベクトル検索の手法を知りたい"
@@ -117,6 +118,15 @@ def build_traversal_path(**overrides: object) -> TraversalPath:
     return TraversalPath.model_validate(payload)
 
 
+def build_paper_paths(**overrides: object) -> PaperPaths:
+    payload: dict[str, object] = {
+        "paper_id": 2,
+        "paths": (build_traversal_path(),),
+    }
+    payload.update(overrides)
+    return PaperPaths.model_validate(payload)
+
+
 def build_paper_candidate(**overrides: object) -> PaperCandidate:
     payload: dict[str, object] = {
         "paper_id": 1,
@@ -178,6 +188,76 @@ def test_search_config_defaults_top_k_to_ten() -> None:
 def test_search_config_rejects_a_non_positive_top_k() -> None:
     with pytest.raises(ValidationError):
         build_config(top_k=0)
+
+
+def test_search_config_defaults_to_one_hop_and_ten_graph_candidates() -> None:
+    config = build_config()
+    assert config.max_hops == 1
+    assert config.generic_concept_threshold == 0.4
+    assert config.max_graph_candidates == 10
+
+
+def test_search_config_defaults_to_the_traversable_paper_relations_in_vocabulary_order() -> None:
+    assert build_config().paper_relations == (
+        PaperConceptRelation.PROPOSES,
+        PaperConceptRelation.USES,
+        PaperConceptRelation.ADDRESSES,
+    )
+
+
+def test_search_config_leaves_mentions_out_of_the_default_paper_relations() -> None:
+    assert PaperConceptRelation.MENTIONS not in build_config().paper_relations
+
+
+def test_search_config_defaults_to_the_traversable_concept_relations_in_vocabulary_order() -> None:
+    assert build_config().concept_relations == (
+        ConceptRelationType.IS_A,
+        ConceptRelationType.PART_OF,
+        ConceptRelationType.USED_FOR,
+        ConceptRelationType.RELATED_TO,
+    )
+
+
+def test_search_config_defaults_to_the_traversable_concept_types_and_leaves_keyword_out() -> None:
+    assert build_config().concept_types == (ConceptType.PROBLEM, ConceptType.METHOD)
+    assert ConceptType.KEYWORD not in build_config().concept_types
+
+
+def test_search_config_rejects_a_repeated_paper_relation() -> None:
+    with pytest.raises(ValidationError, match="paper_relations repeats 'uses'"):
+        build_config(paper_relations=(PaperConceptRelation.USES, PaperConceptRelation.USES))
+
+
+def test_search_config_rejects_a_repeated_concept_relation() -> None:
+    with pytest.raises(ValidationError, match="concept_relations repeats 'is_a'"):
+        build_config(concept_relations=(ConceptRelationType.IS_A, ConceptRelationType.IS_A))
+
+
+def test_search_config_rejects_a_repeated_concept_type() -> None:
+    with pytest.raises(ValidationError, match="concept_types repeats 'method'"):
+        build_config(concept_types=(ConceptType.METHOD, ConceptType.METHOD))
+
+
+def test_search_config_accepts_empty_tuples_that_turn_a_step_off() -> None:
+    config = build_config(paper_relations=(), concept_relations=(), concept_types=())
+    assert config.paper_relations == ()
+    assert config.concept_relations == ()
+    assert config.concept_types == ()
+
+
+def test_search_config_rejects_a_negative_max_hops() -> None:
+    with pytest.raises(ValidationError):
+        build_config(max_hops=-1)
+
+
+def test_search_config_rejects_a_threshold_above_one() -> None:
+    with pytest.raises(ValidationError):
+        build_config(generic_concept_threshold=1.5)
+
+
+def test_search_config_rejects_a_negative_max_graph_candidates() -> None:
+    with pytest.raises(ValidationError):
+        build_config(max_graph_candidates=-1)
 
 
 # EmbeddedItemHit
@@ -392,6 +472,39 @@ def test_two_paths_that_differ_only_in_the_hop_edges_paper_are_different_paths()
     assert path_1 != path_2
     candidate = build_paper_candidate(paper_id=2, hits=(), paths=(path_1, path_2))
     assert candidate.paths == (path_1, path_2)
+
+
+# PaperPaths
+
+
+def test_paper_paths_collects_the_paths_that_reached_one_paper() -> None:
+    reached = build_paper_paths()
+    assert reached.paper_id == 2
+    assert len(reached.paths) == 1
+
+
+def test_paper_paths_requires_at_least_one_path() -> None:
+    with pytest.raises(ValidationError):
+        build_paper_paths(paths=())
+
+
+def test_paper_paths_rejects_a_path_that_ends_at_another_paper() -> None:
+    path = build_traversal_path()  # source paper 1, reaches paper 2
+    with pytest.raises(ValidationError, match="paths must end at paper 3, not 2"):
+        build_paper_paths(paper_id=3, paths=(path,))
+
+
+def test_paper_paths_rejects_the_same_path_twice() -> None:
+    path = build_traversal_path()
+    with pytest.raises(ValidationError, match="paths repeats a path from paper 1"):
+        build_paper_paths(paths=(path, path))
+
+
+def test_paper_paths_keeps_two_paths_that_differ_only_in_the_source_relation() -> None:
+    by_use = build_traversal_path(source_edge=build_paper_edge(1, relation=PaperConceptRelation.USES))
+    by_proposal = build_traversal_path(source_edge=build_paper_edge(1, relation=PaperConceptRelation.PROPOSES))
+    reached = build_paper_paths(paths=(by_use, by_proposal))
+    assert reached.paths == (by_use, by_proposal)
 
 
 # PaperCandidate

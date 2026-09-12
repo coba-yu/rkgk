@@ -63,6 +63,7 @@ from rkgk.domain.models.search import (
     EmbeddedItemHit,
     PaperCandidate,
     PaperHits,
+    PaperPaths,
     SearchConfig,
     SearchResult,
     TraversalPath,
@@ -118,6 +119,12 @@ from rkgk.domain.services.embedding_items import build_embedding_items, concept_
 from rkgk.domain.services.evidence_resolver import find_chunk, resolve_extraction_evidence
 from rkgk.domain.services.graph_builder import build_knowledge_graph, build_paper_node_id, to_networkx
 from rkgk.domain.services.paper_extraction import check_extraction_against_paper, normalize_whitespace
+from rkgk.domain.services.traversal import (
+    ConceptNeighborhoodTraversal,
+    TraversalStrategy,
+    rank_reached_papers,
+    select_graph_candidates,
+)
 from rkgk.domain.services.validation import format_error_path
 from rkgk.domain.services.vector_search import compute_cosine_scores, search_vectors
 from rkgk.domain.tokenizers import Tokenizer
@@ -139,6 +146,7 @@ __all__ = [
     "Concept",
     "ConceptEdge",
     "ConceptHop",
+    "ConceptNeighborhoodTraversal",
     "ConceptNormalization",
     "ConceptNormalizationArtifactInvalidError",
     "ConceptNormalizationArtifactUnreadableError",
@@ -202,6 +210,7 @@ __all__ = [
     "PaperIndexEntry",
     "PaperMeta",
     "PaperNotFoundError",
+    "PaperPaths",
     "PaperPreprocessInfo",
     "PaperRepository",
     "PaperRepositoryError",
@@ -214,6 +223,7 @@ __all__ = [
     "StructuredOutputAgentError",
     "Tokenizer",
     "TraversalPath",
+    "TraversalStrategy",
     "UnresolvedEvidence",
     "build_concept_normalization_prompt",
     "build_concept_normalization_schema",
@@ -233,8 +243,10 @@ __all__ = [
     "normalize_whitespace",
     "build_paper_node_id",
     "parse_page",
+    "rank_reached_papers",
     "resolve_extraction_evidence",
     "search_vectors",
+    "select_graph_candidates",
     "to_networkx",
     "traversable_concept_relations",
     "traversable_concept_types",
