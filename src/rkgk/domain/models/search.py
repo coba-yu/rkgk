@@ -198,14 +198,24 @@ class PaperCandidate(Entity):
     A direct candidate holds at least one hit and may also hold paths, because a paper found by vector search is
     still worth explaining through the graph; a graph candidate holds paths only.
     Every path ends at this paper, so the reached paper is not repeated outside the path.
+    `s3_uri` is None for a paper whose `paper.json` carries no S3 URI, because the candidate is still worth
+    reading and only its original is unlocatable.
     """
 
     paper_id: int = Field(ge=1)
     title: str = Field(min_length=1)
-    s3_uri: str = Field(min_length=1)
+    s3_uri: str | None = None
     summary_ja: str = Field(min_length=1)
     hits: tuple[EmbeddedItemHit, ...] = ()
     paths: tuple[TraversalPath, ...] = ()
+
+    @field_validator("s3_uri")
+    @classmethod
+    def _reject_blank_s3_uri(cls, value: str | None) -> str | None:
+        """A paper without a stored original gets None, so a blank string is a broken value rather than absence."""
+        if value is not None and not value.strip():
+            raise ValueError("s3_uri must contain non-whitespace characters")
+        return value
 
     @model_validator(mode="after")
     def _check_something_led_here(self) -> Self:

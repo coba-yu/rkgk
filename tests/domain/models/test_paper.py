@@ -8,7 +8,7 @@ from rkgk.domain.models.paper import MarkerKind, PaperMeta, PaperPreprocessInfo,
 PREPROCESS = PaperPreprocessInfo(tool="pymupdf", version="1.24.0", processed_at=datetime(2026, 1, 1, tzinfo=UTC))
 
 
-def make_paper_meta(paper_id: int) -> PaperMeta:
+def make_paper_meta(paper_id: int, s3_uri: str | None = None) -> PaperMeta:
     return PaperMeta(
         id=paper_id,
         title="Retrieval Augmented Generation",
@@ -16,6 +16,7 @@ def make_paper_meta(paper_id: int) -> PaperMeta:
         year=2026,
         venue="NeurIPS",
         page_count=12,
+        s3_uri=s3_uri,
         preprocess=PREPROCESS,
     )
 
@@ -28,6 +29,17 @@ def test_paper_meta_dir_name_is_zero_padded_without_truncation(paper_id: int, ex
 def test_paper_meta_rejects_id_below_one() -> None:
     with pytest.raises(ValidationError):
         make_paper_meta(0)
+
+
+def test_paper_meta_has_no_s3_uri_until_one_is_given() -> None:
+    assert make_paper_meta(1).s3_uri is None
+    assert make_paper_meta(1, s3_uri="s3://rkgk-papers/0001.pdf").s3_uri == "s3://rkgk-papers/0001.pdf"
+
+
+@pytest.mark.parametrize("s3_uri", ["", "   "])
+def test_paper_meta_rejects_an_s3_uri_without_any_text(s3_uri: str) -> None:
+    with pytest.raises(ValidationError):
+        make_paper_meta(1, s3_uri=s3_uri)
 
 
 def test_parse_page_records_every_marker_in_line_order() -> None:

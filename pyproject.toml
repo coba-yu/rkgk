@@ -13,6 +13,7 @@ dependencies = [
 extract = "rkgk.cli.extract:main"
 normalize = "rkgk.cli.normalize:main"
 build = "rkgk.cli.build:main"
+search = "rkgk.cli.search:main"
 
 [project.optional-dependencies]
 embedding = [

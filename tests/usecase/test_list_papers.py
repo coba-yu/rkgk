@@ -1,6 +1,6 @@
 import pytest
 
-from rkgk.domain.models.paper import Paper, PaperIndexEntry
+from rkgk.domain.models.paper import Paper, PaperIndexEntry, PaperMeta
 from rkgk.domain.repositories.paper import PaperNotFoundError, PaperRepositoryError
 from rkgk.usecase.list_papers import ListPapersUseCase
 
@@ -20,6 +20,9 @@ class FakePaperRepository:
         return self._entries
 
     def find(self, paper_id: int) -> Paper:
+        raise PaperNotFoundError(f"paper {paper_id}: paper directory not found", paper_id=paper_id)
+
+    def find_meta(self, paper_id: int) -> PaperMeta:
         raise PaperNotFoundError(f"paper {paper_id}: paper directory not found", paper_id=paper_id)
 
 

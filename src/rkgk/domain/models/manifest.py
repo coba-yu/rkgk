@@ -34,6 +34,20 @@ def _describe_ids(ids: Collection[object]) -> str:
     return named
 
 
+class EmbeddingModelMismatchError(Exception):
+    """Raised when the queries would be embedded with another model than the one the index was built with.
+
+    Both names are attributes so a caller can report them without parsing the message.
+    """
+
+    def __init__(self, index_model: str, embedder_model: str) -> None:
+        super().__init__(
+            f"the index was built with {index_model!r} but the queries would be embedded with {embedder_model!r}"
+        )
+        self.index_model = index_model
+        self.embedder_model = embedder_model
+
+
 class IndexManifest(Entity):
     # Literal pins the version so an artifact written against another schema fails validation instead of being
     # read as if it were the current one.

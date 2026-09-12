@@ -17,17 +17,20 @@ from rkgk.domain.repositories.paper_extraction import PaperExtractionNotFoundErr
 
 PREPROCESS = PaperPreprocessInfo(tool="pymupdf", version="1.24.0", processed_at=datetime(2026, 1, 1, tzinfo=UTC))
 
+DEFAULT_TITLE = "Retrieval-Augmented Generation for Conference Paper Search"
 
-def build_paper(paper_id: int, *page_texts: str) -> Paper:
+
+def build_paper(paper_id: int, *page_texts: str, title: str = DEFAULT_TITLE, s3_uri: str | None = None) -> Paper:
     pages = tuple(Page(number=number, text=text) for number, text in enumerate(page_texts, start=1))
     return Paper(
         meta=PaperMeta(
             id=paper_id,
-            title="Retrieval-Augmented Generation for Conference Paper Search",
+            title=title,
             authors=("Ada Lovelace",),
             year=2026,
             venue="NeurIPS",
             page_count=len(pages),
+            s3_uri=s3_uri,
             preprocess=PREPROCESS,
         ),
         pages=pages,
@@ -45,6 +48,11 @@ class FakePaperRepository:
         if paper_id not in self._papers:
             raise PaperNotFoundError(f"paper {paper_id}: paper directory not found", paper_id=paper_id)
         return self._papers[paper_id]
+
+    def find_meta(self, paper_id: int) -> PaperMeta:
+        if paper_id not in self._papers:
+            raise PaperNotFoundError(f"paper {paper_id}: paper directory not found", paper_id=paper_id)
+        return self._papers[paper_id].meta
 
 
 class FakePaperExtractionRepository:

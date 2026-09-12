@@ -30,7 +30,12 @@ from rkgk.domain.models.graph import (
     PaperConceptEdge,
     UnresolvedEvidence,
 )
-from rkgk.domain.models.manifest import INDEX_SCHEMA_VERSION, IndexBuildRun, IndexManifest
+from rkgk.domain.models.manifest import (
+    INDEX_SCHEMA_VERSION,
+    EmbeddingModelMismatchError,
+    IndexBuildRun,
+    IndexManifest,
+)
 from rkgk.domain.models.paper import (
     MARKER_PATTERN,
     MarkerKind,
@@ -164,6 +169,7 @@ __all__ = [
     "EmbeddedItemKind",
     "Embedder",
     "EmbedderError",
+    "EmbeddingModelMismatchError",
     "EmbeddingTable",
     "Entity",
     "EvidenceResolutionError",

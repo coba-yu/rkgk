@@ -121,6 +121,32 @@ def test_missing_page_file_is_reported_by_name(data_dir: Path) -> None:
         FilePaperRepository(data_dir).find(1)
 
 
+def test_find_meta_returns_the_paper_metadata() -> None:
+    meta = FilePaperRepository(FIXTURE_DIR).find_meta(1)
+    assert meta.id == 1
+    assert meta.title == "Retrieval-Augmented Generation for Conference Paper Search"
+
+
+def test_find_meta_succeeds_even_when_a_page_file_is_missing(data_dir: Path) -> None:
+    # Pairs with test_missing_page_file_is_reported_by_name: find_meta never opens pages/, so a page missing for
+    # an unrelated reason cannot fail a caller that only wants the title or the S3 URI.
+    (data_dir / "papers" / "0001" / "pages" / "002.md").unlink()
+    meta = FilePaperRepository(data_dir).find_meta(1)
+    assert meta.id == 1
+
+
+def test_find_meta_reports_a_missing_paper_directory(data_dir: Path) -> None:
+    shutil.rmtree(data_dir / "papers" / "0001")
+    with pytest.raises(PaperNotFoundError, match="paper 1"):
+        FilePaperRepository(data_dir).find_meta(1)
+
+
+def test_find_meta_reports_a_missing_paper_json(data_dir: Path) -> None:
+    (data_dir / "papers" / "0001" / "paper.json").unlink()
+    with pytest.raises(PaperNotFoundError, match="paper.json"):
+        FilePaperRepository(data_dir).find_meta(1)
+
+
 def test_page_file_beyond_page_count_is_reported_by_name(data_dir: Path) -> None:
     (data_dir / "papers" / "0001" / "pages" / "004.md").write_text("extra page\n", encoding="utf-8")
     with pytest.raises(PaperArtifactInvalidError, match="004.md"):

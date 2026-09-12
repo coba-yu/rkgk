@@ -9,7 +9,7 @@ import enum
 import re
 from datetime import datetime
 
-from pydantic import Field
+from pydantic import Field, field_validator
 
 from rkgk.domain.models.base import Entity
 
@@ -33,7 +33,18 @@ class PaperMeta(Entity):
     page_count: int = Field(ge=1)
     doi: str | None = None
     arxiv_id: str | None = None
+    # Where the original PDF is kept, so a search result can point at the paper itself. The preprocessing project
+    # does not write it yet, hence the default: a paper.json without the field says "unknown", not "nowhere".
+    s3_uri: str | None = None
     preprocess: PaperPreprocessInfo
+
+    @field_validator("s3_uri")
+    @classmethod
+    def _reject_blank_s3_uri(cls, value: str | None) -> str | None:
+        """A missing URI is None, so a blank string is a broken value rather than another way of saying absent."""
+        if value is not None and not value.strip():
+            raise ValueError("s3_uri must contain non-whitespace characters")
+        return value
 
     @property
     def dir_name(self) -> str:
