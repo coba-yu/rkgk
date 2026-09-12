@@ -20,6 +20,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SKILL_DIR = REPO_ROOT / ".agents" / "skills" / "rkgk-search-papers"
 SKILL_PATH = SKILL_DIR / "SKILL.md"
 CLAUDE_SKILL_LINK = REPO_ROOT / ".claude" / "skills" / "rkgk-search-papers"
+ENV_TEMPLATE_PATH = REPO_ROOT / ".env.example"
 
 # The skill also documents `uv run --extra ...` and `aws s3 sync --exclude ... --delete`, so these long options belong
 # to those commands and must not be checked against `_build_parser()` like an option of `search`.
@@ -161,6 +162,19 @@ def test_the_skill_frontmatter_name_matches_the_directory() -> None:
     # A loader keys the skill by the frontmatter name, so a directory renamed without its name would leave two
     # names for one skill; the command name is not part of this, because the skill is named after what it does.
     assert frontmatter["name"] == SKILL_DIR.name
+
+
+def test_every_variable_of_the_env_template_is_mentioned_in_the_skill() -> None:
+    """The template is where a user learns the variable names, and the skill is where the agent learns to use them."""
+    text = read_skill()
+    names = [
+        line.partition("=")[0]
+        for line in ENV_TEMPLATE_PATH.read_text(encoding="utf-8").splitlines()
+        if line and not line.startswith("#")
+    ]
+    assert names, ".env.example must declare at least one variable"
+    for name in names:
+        assert f"`{name}`" in text, f"{name} is declared in .env.example but missing from the skill"
 
 
 def test_the_claude_skills_link_resolves_to_the_agents_skills_directory() -> None:

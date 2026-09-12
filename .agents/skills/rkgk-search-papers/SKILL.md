@@ -19,6 +19,7 @@ description: 日本語のテーマから次に読む英語論文を探す。「�
 ## S3 との同期（参考コマンド）
 
 `data/` は S3 の base URI 配下と同じ構造で、base URI は環境変数 `RKGK_S3_URI`（`s3://bucket/prefix`）で渡す。
+`RKGK_S3_URI` が無ければ、`.env.example` を `.env` にコピーして値を書くようユーザーに案内し、`set -a; source .env; set +a` で読み込んでから実行する。
 index が無いとき、または抽出結果や index を S3 に戻すときに、ユーザーの依頼を受けてから次を実行する。
 
 ```
