@@ -174,15 +174,15 @@ def build_mismatched_extraction() -> PaperExtraction:
 
 def test_the_build_saves_the_chunks_the_embeddings_the_graph_and_the_manifest() -> None:
     index = FakeIndexRepository()
-    outcome = build_use_case(index, RecordingEmbedder()).execute()
-    assert index.chunks == outcome.chunks
-    assert index.table == outcome.embeddings
-    assert index.graph == outcome.graph
-    assert index.manifest == outcome.manifest
-    assert [chunk.id for chunk in outcome.chunks] == ["1:0", "1:1", "2:0"]
-    assert len(outcome.graph.concepts) == 3
-    assert len(outcome.graph.paper_concepts) == 3
-    assert len(outcome.graph.concept_relations) == 2
+    result = build_use_case(index, RecordingEmbedder()).execute()
+    assert index.chunks == result.chunks
+    assert index.table == result.embeddings
+    assert index.graph == result.graph
+    assert index.manifest == result.manifest
+    assert [chunk.id for chunk in result.chunks] == ["1:0", "1:1", "2:0"]
+    assert len(result.graph.concepts) == 3
+    assert len(result.graph.paper_concepts) == 3
+    assert len(result.graph.concept_relations) == 2
 
 
 def test_the_manifest_records_the_model_the_dimension_the_budget_and_the_papers() -> None:
@@ -203,10 +203,10 @@ def test_the_manifest_is_saved_after_the_artifacts_it_describes() -> None:
 
 def test_the_embedder_is_asked_for_the_chunks_then_the_summaries_then_the_concepts() -> None:
     embedder = RecordingEmbedder()
-    outcome = build_use_case(FakeIndexRepository(), embedder).execute()
+    result = build_use_case(FakeIndexRepository(), embedder).execute()
     assert len(embedder.documents) == 1
     assert embedder.documents[0] == [
-        *(chunk.text for chunk in outcome.chunks),
+        *(chunk.text for chunk in result.chunks),
         "この論文は検索拡張生成のパイプラインを提案する。",
         "この論文は知識グラフを検索の骨格として使う。",
         "Retrieval-Augmented Generation (RAG)",

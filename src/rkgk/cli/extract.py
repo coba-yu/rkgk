@@ -36,7 +36,7 @@ def _run(args: argparse.Namespace) -> int:
         max_attempts=args.max_attempts,
     )
     try:
-        outcome = use_case.execute(args.paper_id)
+        result = use_case.execute(args.paper_id)
     except PaperExtractionValidationError as error:
         print_json(
             {
@@ -51,10 +51,10 @@ def _run(args: argparse.Namespace) -> int:
         return EXIT_ERROR
     payload: dict[str, object] = {
         "status": "ok",
-        "paper_id": outcome.extraction.paper_id,
-        "attempts": outcome.attempts,
+        "paper_id": result.extraction.paper_id,
+        "attempts": result.attempts,
     }
-    payload.update(_render_result(outcome.extraction))
+    payload.update(_render_result(result.extraction))
     payload["path"] = str(extraction_repository.path_for(args.paper_id))
     print_json(payload)
     return EXIT_OK
