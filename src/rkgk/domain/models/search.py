@@ -15,15 +15,47 @@ from pydantic import Field, field_validator, model_validator
 from rkgk.domain.models.base import Entity, Slug
 from rkgk.domain.models.embedding import EmbeddedItemKind
 from rkgk.domain.models.graph import ConceptEdge, PaperConceptEdge
+from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType, PaperConceptRelation
+
+# The vocabulary decides what traversal may follow, and these keep that decision in enum definition order so that
+# the JSON of a result is the same on every run; a frozenset would order them by hash instead.
+_DEFAULT_PAPER_RELATIONS = tuple(member for member in PaperConceptRelation if member.spec.traversable)
+_DEFAULT_CONCEPT_RELATIONS = tuple(member for member in ConceptRelationType if member.spec.traversable)
+_DEFAULT_CONCEPT_TYPES = tuple(member for member in ConceptType if member.spec.traversable)
 
 
 class SearchConfig(Entity):
     """The settings one search ran with, kept in the result so a reader knows how the candidates were chosen.
 
-    Only the vector search setting exists yet; the traversal settings join it when traversal is implemented.
+    The defaults are what the vocabulary marks as traversable, so a search follows the edges the vocabulary means
+    to be followed unless the caller narrows or widens them.
+    `max_hops` counts concept-to-concept hops only, so 0 leaves the papers that share a concept with a direct
+    candidate, and `generic_concept_threshold` drops a concept held by a larger share of the papers than that,
+    because a concept the whole corpus holds joins papers that have nothing to do with each other.
     """
 
     top_k: int = Field(default=10, ge=1)
+    max_hops: int = Field(default=1, ge=0)
+    paper_relations: tuple[PaperConceptRelation, ...] = _DEFAULT_PAPER_RELATIONS
+    concept_relations: tuple[ConceptRelationType, ...] = _DEFAULT_CONCEPT_RELATIONS
+    concept_types: tuple[ConceptType, ...] = _DEFAULT_CONCEPT_TYPES
+    generic_concept_threshold: float = Field(default=0.4, ge=0.0, le=1.0)
+    max_graph_candidates: int = Field(default=10, ge=0)
+
+    @model_validator(mode="after")
+    def _reject_a_repeated_member(self) -> Self:
+        """An empty tuple is allowed and only turns that step off, but a member twice would walk one edge twice."""
+        for name, members in (
+            ("paper_relations", self.paper_relations),
+            ("concept_relations", self.concept_relations),
+            ("concept_types", self.concept_types),
+        ):
+            seen: set[str] = set()
+            for member in members:
+                if member.value in seen:
+                    raise ValueError(f"{name} repeats {member.value!r}")
+                seen.add(member.value)
+        return self
 
 
 class EmbeddedItemHit(Entity):
@@ -136,6 +168,28 @@ class TraversalPath(Entity):
     def reached_concept_id(self) -> str:
         """The concept the reached paper is attached to: the last hop's end, or the first concept without hops."""
         return self.target_edge.concept_id
+
+
+class PaperPaths(Entity):
+    """The paths that reached one paper, gathered by traversal before the paper becomes a candidate.
+
+    Traversal knows the graph but not the titles, summaries or S3 URIs, so it returns this and the use case turns
+    it into a `PaperCandidate`, or attaches the paths to the direct candidate the paper already is.
+    """
+
+    paper_id: int = Field(ge=1)
+    paths: tuple[TraversalPath, ...] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _check_paths_end_here(self) -> Self:
+        seen: set[TraversalPath] = set()
+        for path in self.paths:
+            if path.reached_paper_id != self.paper_id:
+                raise ValueError(f"paths must end at paper {self.paper_id}, not {path.reached_paper_id}")
+            if path in seen:
+                raise ValueError(f"paths repeats a path from paper {path.source_paper_id}")
+            seen.add(path)
+        return self
 
 
 class PaperCandidate(Entity):
