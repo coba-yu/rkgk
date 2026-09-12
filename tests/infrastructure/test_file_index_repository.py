@@ -88,7 +88,7 @@ GRAPH = KnowledgeGraph(
 )
 
 
-# One row per chunk, per paper summary and per concept, the count IndexBuildRun expects of CHUNKS, MANIFEST and GRAPH.
+# One row per chunk of CHUNKS, per paper of MANIFEST and per concept of GRAPH, the items IndexBuildRun expects.
 CONSISTENT_TABLE = EmbeddingTable(
     items=(
         EmbeddedItem(kind=EmbeddedItemKind.CHUNK, ref="1:0", paper_id=1, text="We study retrieval."),
@@ -420,6 +420,16 @@ def test_a_manifest_disagreeing_with_the_saved_vectors_is_reported_as_invalid(tm
     with pytest.raises(IndexArtifactInvalidError, match="do not belong together") as caught:
         repository.find_index()
     assert caught.value.location == str(tmp_path / "index")
+
+
+def test_chunks_rewritten_after_the_saved_items_are_reported_as_invalid(tmp_path: Path) -> None:
+    repository = FileIndexRepository(tmp_path)
+    save_whole_index(repository)
+    rebuilt = (CHUNKS[0], Chunk.create(paper_id=1, idx=2, page_start=2, page_end=2, text="順位付けの手法を述べる。"))
+    repository.save_chunks(rebuilt)
+    with pytest.raises(IndexArtifactInvalidError, match="do not belong together") as caught:
+        repository.find_index()
+    assert "1:1" in str(caught.value)
 
 
 def test_an_incompatible_manifest_is_reported_before_the_missing_artifacts(tmp_path: Path) -> None:

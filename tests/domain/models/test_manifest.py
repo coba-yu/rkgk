@@ -34,6 +34,14 @@ TABLE = EmbeddingTable(
 )
 
 
+CHUNK_ITEM, SUMMARY_ITEM, CONCEPT_ITEM = TABLE.items
+
+
+def build_table(*items: EmbeddedItem) -> EmbeddingTable:
+    """Pair the given items with one zero vector each, in row order."""
+    return EmbeddingTable(items=items, vectors=np.zeros((len(items), 4), dtype=np.float32))
+
+
 def build_manifest(**overrides: object) -> IndexManifest:
     payload: dict[str, object] = {
         "schema_version": 1,
@@ -101,12 +109,72 @@ def test_a_manifest_that_declares_another_dimension_than_the_vectors_is_rejected
         build_run(manifest=build_manifest(embedding_dimension=8))
 
 
-def test_embedded_items_that_do_not_cover_every_chunk_summary_and_concept_are_rejected() -> None:
-    smaller = EmbeddingTable(items=TABLE.items[:2], vectors=TABLE.vectors[:2])
-    with pytest.raises(ValidationError, match="embeddings holds 2 items for 1 chunks"):
-        build_run(embeddings=smaller)
+def test_a_chunk_of_a_paper_the_manifest_does_not_cover_is_rejected() -> None:
+    stray = Chunk.create(paper_id=2, idx=0, page_start=1, page_end=1, text="We rank documents.")
+    with pytest.raises(ValidationError, match="chunks hold papers the manifest does not cover: '2'"):
+        build_run(chunks=CHUNKS + (stray,))
 
 
-def test_a_run_without_the_chunks_of_the_embedded_items_is_rejected() -> None:
-    with pytest.raises(ValidationError, match="embeddings holds 3 items for 0 chunks"):
-        build_run(chunks=())
+def test_a_chunk_item_that_names_no_chunk_is_rejected() -> None:
+    table = build_table(CHUNK_ITEM.model_copy(update={"ref": "1:1"}), SUMMARY_ITEM, CONCEPT_ITEM)
+    with pytest.raises(ValidationError, match="chunk items point at chunks the index does not hold: '1:1'"):
+        build_run(embeddings=table)
+
+
+def test_a_chunk_without_an_item_is_rejected() -> None:
+    later = Chunk.create(paper_id=1, idx=1, page_start=2, page_end=2, text="We rank documents.")
+    with pytest.raises(ValidationError, match="chunks without a chunk item: '1:1'"):
+        build_run(chunks=CHUNKS + (later,))
+
+
+def test_a_chunk_item_whose_text_differs_from_its_chunk_is_rejected() -> None:
+    table = build_table(CHUNK_ITEM.model_copy(update={"text": "We rank documents."}), SUMMARY_ITEM, CONCEPT_ITEM)
+    with pytest.raises(ValidationError, match="embedded from another text than their chunk: '1:0'"):
+        build_run(embeddings=table)
+
+
+def test_a_summary_item_of_a_paper_outside_the_manifest_is_rejected() -> None:
+    table = build_table(CHUNK_ITEM, SUMMARY_ITEM.model_copy(update={"ref": "2", "paper_id": 2}), CONCEPT_ITEM)
+    with pytest.raises(ValidationError, match="summary items point at papers the index does not hold: '2'"):
+        build_run(embeddings=table)
+
+
+def test_a_paper_without_a_summary_item_is_rejected() -> None:
+    table = build_table(CHUNK_ITEM, CONCEPT_ITEM)
+    with pytest.raises(ValidationError, match="papers without a summary item: '1'"):
+        build_run(embeddings=table)
+
+
+def test_a_concept_item_that_names_no_concept_of_the_graph_is_rejected() -> None:
+    table = build_table(CHUNK_ITEM, SUMMARY_ITEM, CONCEPT_ITEM.model_copy(update={"ref": "ranking"}))
+    with pytest.raises(ValidationError, match="concept items point at concepts the index does not hold: 'ranking'"):
+        build_run(embeddings=table)
+
+
+def test_a_concept_without_an_item_is_rejected() -> None:
+    table = build_table(CHUNK_ITEM, SUMMARY_ITEM)
+    with pytest.raises(ValidationError, match="concepts without a concept item: 'retrieval'"):
+        build_run(embeddings=table)
+
+
+def test_a_run_whose_chunks_items_papers_and_concepts_all_match_is_accepted() -> None:
+    chunks = CHUNKS + (Chunk.create(paper_id=2, idx=0, page_start=1, page_end=1, text="We rank documents."),)
+    graph = KnowledgeGraph(
+        paper_ids=(1, 2),
+        concepts=GRAPH.concepts
+        + (Concept(id="ranking", canonical_name="Ranking", type=ConceptType.METHOD, paper_count=1),),
+        paper_concepts=GRAPH.paper_concepts,
+        concept_relations=(),
+    )
+    table = build_table(
+        CHUNK_ITEM,
+        EmbeddedItem(kind=EmbeddedItemKind.CHUNK, ref="2:0", paper_id=2, text="We rank documents."),
+        SUMMARY_ITEM,
+        EmbeddedItem(kind=EmbeddedItemKind.SUMMARY, ref="2", paper_id=2, text="順位付けを研究する。"),
+        CONCEPT_ITEM,
+        EmbeddedItem(kind=EmbeddedItemKind.CONCEPT, ref="ranking", text="Ranking"),
+    )
+    run = build_run(manifest=build_manifest(paper_ids=(1, 2)), chunks=chunks, embeddings=table, graph=graph)
+    assert run.chunks == chunks
+    assert run.embeddings == table
+    assert run.graph == graph
