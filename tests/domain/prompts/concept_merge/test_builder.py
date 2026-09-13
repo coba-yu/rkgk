@@ -3,7 +3,7 @@ from pathlib import Path
 from rkgk.domain.models.concept_normalization import ConceptNormalizationIssue
 from rkgk.domain.models.paper_extraction import ExtractedConcept, PaperExtraction
 from rkgk.domain.models.vocabulary import ConceptType, describe_vocabulary
-from rkgk.domain.prompts.concept_normalization.builder import build_concept_normalization_prompt
+from rkgk.domain.prompts.concept_merge.builder import build_concept_merge_prompt
 
 EXTRACTIONS = (
     PaperExtraction(
@@ -44,20 +44,20 @@ PROMPT_SNAPSHOT_PATH = Path(__file__).parent / "snapshots" / "prompt.md"
 
 
 def test_the_prompt_for_the_extractions_matches_the_snapshot() -> None:
-    assert build_concept_normalization_prompt(EXTRACTIONS) == PROMPT_SNAPSHOT_PATH.read_text(encoding="utf-8")
+    assert build_concept_merge_prompt(EXTRACTIONS) == PROMPT_SNAPSHOT_PATH.read_text(encoding="utf-8")
 
 
 def test_the_prompt_is_deterministic() -> None:
-    assert build_concept_normalization_prompt(EXTRACTIONS) == build_concept_normalization_prompt(EXTRACTIONS)
+    assert build_concept_merge_prompt(EXTRACTIONS) == build_concept_merge_prompt(EXTRACTIONS)
 
 
 def test_the_prompt_carries_the_vocabulary() -> None:
-    prompt = build_concept_normalization_prompt(EXTRACTIONS)
+    prompt = build_concept_merge_prompt(EXTRACTIONS)
     assert describe_vocabulary().rstrip("\n") in prompt
 
 
 def test_the_prompt_lists_every_paper_with_its_concepts_aliases_and_description() -> None:
-    prompt = build_concept_normalization_prompt(EXTRACTIONS)
+    prompt = build_concept_merge_prompt(EXTRACTIONS)
     assert '<paper id="1">' in prompt
     assert '<paper id="2">' in prompt
     assert (
@@ -68,11 +68,11 @@ def test_the_prompt_lists_every_paper_with_its_concepts_aliases_and_description(
 
 
 def test_the_prompt_ends_with_the_last_paper() -> None:
-    assert build_concept_normalization_prompt(EXTRACTIONS).endswith("</paper>\n")
+    assert build_concept_merge_prompt(EXTRACTIONS).endswith("</paper>\n")
 
 
 def test_a_first_attempt_mentions_neither_a_previous_answer_nor_issues() -> None:
-    prompt = build_concept_normalization_prompt(EXTRACTIONS)
+    prompt = build_concept_merge_prompt(EXTRACTIONS)
     assert "Previous attempt" not in prompt
     assert "## Issues" not in prompt
 
@@ -80,7 +80,13 @@ def test_a_first_attempt_mentions_neither_a_previous_answer_nor_issues() -> None
 def test_a_retry_repeats_the_rejected_json_and_the_issues() -> None:
     previous = {"schema_version": 1, "concepts": []}
     issues = (ConceptNormalizationIssue(path="concepts", message="paper 2 'c2' is in no merged_from"),)
-    prompt = build_concept_normalization_prompt(EXTRACTIONS, previous, issues)
+    prompt = build_concept_merge_prompt(EXTRACTIONS, previous, issues)
     assert '"schema_version": 1' in prompt
     assert "- concepts: paper 2 'c2' is in no merged_from" in prompt
     assert "上記のすべての問題を修正した、完全な JSON オブジェクトを返す。" in prompt
+
+
+def test_the_prompt_asks_for_the_merge_alone_and_never_for_a_relation() -> None:
+    prompt = build_concept_merge_prompt(EXTRACTIONS)
+    assert "概念どうしの関係はここでは扱わない。" in prompt
+    assert "rationale" not in prompt

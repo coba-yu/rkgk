@@ -1,7 +1,8 @@
 # Task
 
-複数の研究論文から抽出された概念を、1 つの共通語彙に統合する。
-以下の概念を読み、そのそれぞれを正規化概念として 1 回だけ報告し、それらの正規化概念どうしがどう関係するかを述べる。
+統合済みの正規化概念どうしの関係を、一般知識に基づいて提案する。
+以下の概念一覧を読み、どの論文も述べていないが一般知識として成り立つ関係を報告する。
+概念そのものは確定しているので、統合をやり直さない。
 与えられた JSON Schema に従う単一の JSON オブジェクトで回答する。
 
 ## Vocabulary
@@ -35,27 +36,18 @@
 
 ## Rules
 
-- 2 つの概念は同じものを指すときにだけ統合し、意味が同じかどうか判断できない概念は別々の正規化概念として残す。
-- `canonical_name` には概念の英語の正式名称を書き、`id` はそれを小文字にした単語を `-` でつないで導き、`^[a-z0-9]+(-[a-z0-9]+)*$` に一致させる。
-- 統合した概念のすべての表記、略語、日本語名を `aliases` に集める。
-- 抽出されたすべての概念を、抽出元の論文 id と抽出時のローカル id として、ちょうど 1 つの `merged_from` に記載する。
-- `type` は統合した概念が抽出されたときの type のままにする。
-- どの論文も抽出していない概念を追加しない。
 - 一般知識に基づく概念間の関係は正規化概念どうしの間にだけ追加し、他の id は書かない。
-- それらの関係には `is_a`、`part_of`、`used_for` を優先して使い、他の 3 つのどれも当てはまらないときにだけ `related_to` を使う。
+- 関係には `is_a`、`part_of`、`used_for` を優先して使い、他の 3 つのどれも当てはまらないときにだけ `related_to` を使う。
 - 一般知識に基づく関係には根拠がないため、すべての関係に、それが成り立つ理由を述べた 1 文の `rationale` を付ける。
+- 一覧にない概念を追加しない。
+- `source_id` と `target_id` には異なる slug を書く。
+- 同じ `source_id`、`target_id`、`relation` の組を繰り返さない。
 
-# Papers
+# Concepts
 
-論文ごとに個別に抽出したので、`c1`、`c2`、... はそれが記載されている論文の中でのみ通用する。
-概念の行は `- local id | name | type | aliases: ... | description` という形式で、論文が aliases や description を報告していない場合は途中で終わる。
+以下は統合済みの正規化概念であり、`source_id` と `target_id` にはここに並ぶ slug だけを書く。
+概念の行は `- slug | canonical_name | type | aliases: ... | description` という形式で、概念が aliases や description を持たない場合は途中で終わる。
 
-<paper id="1">
-- c1 | Retrieval-Augmented Generation | method | aliases: RAG, 検索拡張生成 | Generation grounded in retrieved passages.
-- c2 | Page-Aligned Chunking | method
-</paper>
-
-<paper id="2">
-- c1 | RAG | method
-- c2 | Knowledge Graph | method | aliases: KG | A graph of concepts and their relations.
-</paper>
+- retrieval-augmented-generation | Retrieval-Augmented Generation | method | aliases: RAG, 検索拡張生成 | Generation grounded in retrieved passages.
+- page-aligned-chunking | Page-Aligned Chunking | method
+- knowledge-graph | Knowledge Graph | method | aliases: KG | A graph of concepts and their relations.

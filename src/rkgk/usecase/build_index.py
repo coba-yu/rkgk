@@ -67,8 +67,8 @@ class BuildIndexUseCase:
         issues = check_normalization_against_extractions(normalization, extractions)
         if issues:
             # The issues name every local concept the normalization leaves out, which is how a normalization that
-            # predates the newest extraction shows up.
-            raise ConceptNormalizationValidationError(issues)
+            # predates the newest extraction shows up. The merge stage is what has to run again to fix it.
+            raise ConceptNormalizationValidationError("merge", issues)
 
         chunks_by_paper = {paper.meta.id: chunk_paper(paper, self._tokenizer, self._max_tokens) for paper in papers}
         chunk_evidence = self._resolve_evidence(extractions, chunks_by_paper)

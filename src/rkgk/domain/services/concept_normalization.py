@@ -3,15 +3,21 @@
 This module reads the normalization and extraction models but owns no data of its own.
 """
 
-from rkgk.domain.models.concept_normalization import ConceptNormalization, ConceptNormalizationIssue
+from rkgk.domain.models.concept_normalization import (
+    ConceptMerge,
+    ConceptNormalization,
+    ConceptNormalizationIssue,
+    GeneralKnowledgeProposal,
+    NormalizedConcept,
+)
 from rkgk.domain.models.paper_extraction import PaperExtraction
 from rkgk.domain.models.vocabulary import ConceptType
 
 
-def check_normalization_against_extractions(
-    normalization: ConceptNormalization, extractions: tuple[PaperExtraction, ...]
+def _check_concepts_against_extractions(
+    concepts: tuple[NormalizedConcept, ...], extractions: tuple[PaperExtraction, ...]
 ) -> tuple[ConceptNormalizationIssue, ...]:
-    """Report every place where the normalization disagrees with the extractions it merges.
+    """Report every place where the merged concepts disagree with the extractions they merge.
 
     All issues are collected instead of raising on the first one, because an agent fixing its output needs the
     whole list to converge in one more attempt.
@@ -24,7 +30,7 @@ def check_normalization_against_extractions(
     known_papers = {extraction.paper_id for extraction in extractions}
     issues: list[ConceptNormalizationIssue] = []
     covered: set[tuple[int, str]] = set()
-    for index, concept in enumerate(normalization.concepts):
+    for index, concept in enumerate(concepts):
         source_types: list[ConceptType] = []
         for position, ref in enumerate(concept.merged_from):
             key = (ref.paper_id, ref.local_id)
@@ -58,6 +64,42 @@ def check_normalization_against_extractions(
                     ConceptNormalizationIssue(
                         path="concepts",
                         message=f"paper {extraction.paper_id} {concept.local_id!r} is in no merged_from",
+                    )
+                )
+    return tuple(issues)
+
+
+def check_merge_against_extractions(
+    merge: ConceptMerge, extractions: tuple[PaperExtraction, ...]
+) -> tuple[ConceptNormalizationIssue, ...]:
+    """Report every disagreement between what the merge stage answered and the extractions it was given."""
+    return _check_concepts_against_extractions(merge.concepts, extractions)
+
+
+def check_normalization_against_extractions(
+    normalization: ConceptNormalization, extractions: tuple[PaperExtraction, ...]
+) -> tuple[ConceptNormalizationIssue, ...]:
+    """Report every disagreement between a stored normalization and the extractions it merges."""
+    return _check_concepts_against_extractions(normalization.concepts, extractions)
+
+
+def check_relations_against_concepts(
+    proposal: GeneralKnowledgeProposal, concepts: tuple[NormalizedConcept, ...]
+) -> tuple[ConceptNormalizationIssue, ...]:
+    """Report every proposed relation that stands on a slug the merge never declared.
+
+    The relation stage answers on its own, so pydantic sees no vocabulary to check the slugs against; the
+    vocabulary only exists here, where both the proposal and the merged concepts are in hand.
+    """
+    declared = {concept.id for concept in concepts}
+    issues: list[ConceptNormalizationIssue] = []
+    for index, edge in enumerate(proposal.concept_relations):
+        for field, slug in (("source_id", edge.source_id), ("target_id", edge.target_id)):
+            if slug not in declared:
+                issues.append(
+                    ConceptNormalizationIssue(
+                        path=f"concept_relations[{index}].{field}",
+                        message=f"is {slug!r}, which is not one of the normalized concepts",
                     )
                 )
     return tuple(issues)

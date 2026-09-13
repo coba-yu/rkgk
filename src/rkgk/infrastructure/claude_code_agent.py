@@ -10,6 +10,8 @@ A successful run exits 0 with `type: "result"`, `subtype: "success"`, `is_error:
 follows the schema under `structured_output`.
 A run that hits the turn limit exits 1 with `is_error: true`, `subtype: "error_max_turns"` and
 `structured_output: null`, so the structured output is the only field worth reading.
+`result` carries the natural-language text Claude produced, such as a rate-limit notice or the max-turns
+explanation, and is worth surfacing whenever a run fails or skips the structured output.
 """
 
 import json
@@ -42,12 +44,14 @@ class ClaudeCodeAgent:
         if completed.returncode != 0 or payload.get("is_error") or payload.get("subtype") != "success":
             raise StructuredOutputAgentError(
                 f"{self._command} reported a failure: exit code {completed.returncode}, "
-                f"subtype {payload.get('subtype')!r}{self._stderr_note(completed.stderr)}"
+                f"subtype {payload.get('subtype')!r}, is_error {payload.get('is_error')!r}"
+                f"{self._stderr_note(completed.stderr)}{self._result_note(payload)}"
             )
         structured_output = payload.get("structured_output")
         if structured_output is None:
             raise StructuredOutputAgentError(
-                f"{self._command} returned no structured output{self._stderr_note(completed.stderr)}"
+                f"{self._command} returned no structured output"
+                f"{self._stderr_note(completed.stderr)}{self._result_note(payload)}"
             )
         return structured_output
 
@@ -104,3 +108,11 @@ class ClaudeCodeAgent:
 
     def _stderr_note(self, stderr: str) -> str:
         return f"; stderr: {_excerpt(stderr)}" if stderr.strip() else ""
+
+    def _result_note(self, payload: dict[str, object]) -> str:
+        # `result` is Claude's own account of what happened (rate limit, max-turns explanation, ...), so a
+        # failure without it is hard to tell apart from any other failure of the same subtype.
+        result = payload.get("result")
+        if not isinstance(result, str) or not result.strip():
+            return ""
+        return f"; result: {_excerpt(result)}"

@@ -36,8 +36,7 @@ EXTRACTIONS: dict[int, dict[str, Any]] = {
     },
 }
 
-VALID_NORMALIZATION: dict[str, Any] = {
-    "schema_version": 1,
+VALID_MERGE: dict[str, Any] = {
     "concepts": [
         {
             "id": "retrieval-augmented-generation",
@@ -58,7 +57,10 @@ VALID_NORMALIZATION: dict[str, Any] = {
             "type": "method",
             "merged_from": [{"paper_id": 2, "local_id": "c2"}],
         },
-    ],
+    ]
+}
+
+VALID_RELATIONS: dict[str, Any] = {
     "concept_relations": [
         {
             "source_id": "page-aligned-chunking",
@@ -66,7 +68,18 @@ VALID_NORMALIZATION: dict[str, Any] = {
             "relation": "part_of",
             "rationale": "Chunking is the indexing step of a retrieval-augmented generation pipeline.",
         }
-    ],
+    ]
+}
+
+UNKNOWN_RELATIONS: dict[str, Any] = {
+    "concept_relations": [
+        {
+            "source_id": "dense-retrieval",
+            "target_id": "retrieval-augmented-generation",
+            "relation": "used_for",
+            "rationale": "Dense retrieval finds the passages the pipeline generates from.",
+        }
+    ]
 }
 
 
@@ -109,10 +122,9 @@ def install_failing_agent(monkeypatch: pytest.MonkeyPatch, message: str) -> None
     monkeypatch.setattr(normalize, "ClaudeCodeAgent", lambda model=None: FailingAgent())
 
 
-def build_incomplete_normalization() -> dict[str, Any]:
-    payload = copy.deepcopy(VALID_NORMALIZATION)
+def build_incomplete_merge() -> dict[str, Any]:
+    payload = copy.deepcopy(VALID_MERGE)
     payload["concepts"] = payload["concepts"][:2]
-    payload["concept_relations"] = []
     return payload
 
 
@@ -121,7 +133,7 @@ def test_run_normalizes_every_extracted_paper_and_writes_both_files(
 ) -> None:
     data_dir = copy_fixture(tmp_path)
     write_extractions(data_dir)
-    install_agent(monkeypatch, VALID_NORMALIZATION)
+    install_agent(monkeypatch, VALID_MERGE, VALID_RELATIONS)
     assert main(["--data-dir", str(data_dir)]) == 0
     output = read_output(capsys)
     assert output["status"] == "ok"
@@ -129,7 +141,7 @@ def test_run_normalizes_every_extracted_paper_and_writes_both_files(
     assert output["concepts"] == 3
     assert output["merged_concepts"] == 1
     assert output["concept_relations"] == 1
-    assert output["attempts"] == 1
+    assert output["attempts"] == {"merge": 1, "relations": 1}
     assert output["paths"] == [
         str(data_dir / "normalization" / "concepts.json"),
         str(data_dir / "normalization" / "concept_relations.json"),
@@ -142,29 +154,46 @@ def test_run_normalizes_every_extracted_paper_and_writes_both_files(
     ]
 
 
-def test_run_counts_the_attempt_the_agent_needed_to_correct_itself(
+def test_run_counts_the_attempts_each_stage_needed_to_correct_itself(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     data_dir = copy_fixture(tmp_path)
     write_extractions(data_dir)
-    install_agent(monkeypatch, build_incomplete_normalization(), VALID_NORMALIZATION)
+    install_agent(monkeypatch, build_incomplete_merge(), VALID_MERGE, UNKNOWN_RELATIONS, VALID_RELATIONS)
     assert main(["--data-dir", str(data_dir)]) == 0
-    assert read_output(capsys)["attempts"] == 2
+    assert read_output(capsys)["attempts"] == {"merge": 2, "relations": 2}
 
 
-def test_run_reports_the_issues_when_the_agent_keeps_failing(
+def test_run_reports_the_issues_of_the_merge_when_the_agent_keeps_failing(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     data_dir = copy_fixture(tmp_path)
     write_extractions(data_dir)
-    rejected = build_incomplete_normalization()
+    rejected = build_incomplete_merge()
     install_agent(monkeypatch, rejected, rejected)
     assert main(["--data-dir", str(data_dir), "--max-attempts", "2"]) == 1
     output = read_output(capsys)
     assert output["status"] == "invalid"
+    assert output["stage"] == "merge"
     assert output["attempts"] == 2
     assert output["issues"][0]["path"] == "concepts"
     assert "paper 2 'c2'" in output["issues"][0]["message"]
+    assert not (data_dir / "normalization").exists()
+
+
+def test_run_reports_the_relation_stage_and_writes_nothing_when_it_keeps_failing(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    data_dir = copy_fixture(tmp_path)
+    write_extractions(data_dir)
+    install_agent(monkeypatch, VALID_MERGE, UNKNOWN_RELATIONS, UNKNOWN_RELATIONS)
+    assert main(["--data-dir", str(data_dir), "--max-attempts", "2"]) == 1
+    output = read_output(capsys)
+    assert output["status"] == "invalid"
+    assert output["stage"] == "relations"
+    assert output["attempts"] == 2
+    assert output["issues"][0]["path"] == "concept_relations[0].source_id"
+    assert "dense-retrieval" in output["issues"][0]["message"]
     assert not (data_dir / "normalization").exists()
 
 
@@ -172,7 +201,7 @@ def test_run_reports_every_paper_that_has_not_been_extracted_yet(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     data_dir = copy_fixture(tmp_path)
-    install_agent(monkeypatch, VALID_NORMALIZATION)
+    install_agent(monkeypatch, VALID_MERGE, VALID_RELATIONS)
     assert main(["--data-dir", str(data_dir)]) == 2
     output = read_output(capsys)
     assert output["status"] == "error"
@@ -194,7 +223,7 @@ def test_run_reports_an_agent_that_cannot_be_started(
 def test_run_reports_a_data_directory_without_an_index(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    install_agent(monkeypatch, VALID_NORMALIZATION)
+    install_agent(monkeypatch, VALID_MERGE, VALID_RELATIONS)
     assert main(["--data-dir", str(tmp_path / "empty")]) == 2
     assert read_output(capsys)["status"] == "error"
 
@@ -205,7 +234,7 @@ def test_run_reports_an_index_without_papers(
     data_dir = tmp_path / "data"
     (data_dir / "papers").mkdir(parents=True)
     (data_dir / "papers" / "index.json").write_text('{"papers": []}', encoding="utf-8")
-    install_agent(monkeypatch, VALID_NORMALIZATION)
+    install_agent(monkeypatch, VALID_MERGE, VALID_RELATIONS)
     assert main(["--data-dir", str(data_dir)]) == 2
     assert read_output(capsys)["message"] == "no papers in the index"
 
@@ -219,7 +248,7 @@ def test_run_passes_the_chosen_model_to_the_agent(
 
     def _build(model: str | None = None) -> FakeAgent:
         seen.append(model)
-        return FakeAgent(VALID_NORMALIZATION)
+        return FakeAgent(VALID_MERGE, VALID_RELATIONS)
 
     monkeypatch.setattr(normalize, "ClaudeCodeAgent", _build)
     assert main(["--data-dir", str(data_dir), "--model", "claude-opus-4"]) == 0

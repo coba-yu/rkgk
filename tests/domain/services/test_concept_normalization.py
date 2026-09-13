@@ -1,12 +1,18 @@
 from rkgk.domain.models.concept_normalization import (
+    ConceptMerge,
     ConceptNormalization,
     GeneralKnowledgeEdge,
+    GeneralKnowledgeProposal,
     LocalConceptRef,
     NormalizedConcept,
 )
 from rkgk.domain.models.paper_extraction import ExtractedConcept, PaperExtraction
 from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType
-from rkgk.domain.services.concept_normalization import check_normalization_against_extractions
+from rkgk.domain.services.concept_normalization import (
+    check_merge_against_extractions,
+    check_normalization_against_extractions,
+    check_relations_against_concepts,
+)
 
 EXTRACTIONS = (
     PaperExtraction(
@@ -134,3 +140,51 @@ def test_every_issue_is_reported_instead_of_only_the_first() -> None:
     )
     assert [issue.path for issue in issues] == ["concepts[1].merged_from[1]", "concepts[1].type", "concepts"]
     assert issues[2].message == "paper 1 'c2' is in no merged_from"
+
+
+def test_a_merge_that_covers_every_extracted_concept_is_accepted() -> None:
+    merge = ConceptMerge(concepts=(RAG, CHUNKING, KNOWLEDGE_GRAPH))
+    assert check_merge_against_extractions(merge, EXTRACTIONS) == ()
+
+
+def test_a_merge_is_read_the_same_way_as_the_normalization_assembled_from_it() -> None:
+    merge = ConceptMerge(concepts=(RAG, CHUNKING))
+    assert check_merge_against_extractions(merge, EXTRACTIONS) == check_normalization_against_extractions(
+        build_normalization(concepts=(RAG, CHUNKING), concept_relations=()), EXTRACTIONS
+    )
+
+
+def test_a_merge_that_invents_a_reference_is_reported_with_its_path() -> None:
+    invented = KNOWLEDGE_GRAPH.model_copy(update={"merged_from": (LocalConceptRef(paper_id=2, local_id="c9"),)})
+    issues = check_merge_against_extractions(ConceptMerge(concepts=(RAG, CHUNKING, invented)), EXTRACTIONS)
+    assert [issue.path for issue in issues] == ["concepts[2].merged_from[0]", "concepts"]
+    assert issues[0].message == "paper 2 has no concept 'c9'"
+
+
+def test_relations_between_declared_concepts_are_accepted() -> None:
+    proposal = GeneralKnowledgeProposal(concept_relations=(PART_OF,))
+    assert check_relations_against_concepts(proposal, (RAG, CHUNKING, KNOWLEDGE_GRAPH)) == ()
+
+
+def test_a_proposal_without_relations_is_accepted() -> None:
+    assert check_relations_against_concepts(GeneralKnowledgeProposal(), (RAG, CHUNKING)) == ()
+
+
+def test_a_relation_on_a_slug_no_concept_declares_is_reported_with_that_slug() -> None:
+    edge = PART_OF.model_copy(update={"target_id": "dense-retrieval"})
+    issues = check_relations_against_concepts(
+        GeneralKnowledgeProposal(concept_relations=(edge,)), (RAG, CHUNKING, KNOWLEDGE_GRAPH)
+    )
+    assert [issue.path for issue in issues] == ["concept_relations[0].target_id"]
+    assert issues[0].message == "is 'dense-retrieval', which is not one of the normalized concepts"
+
+
+def test_both_ends_of_a_relation_are_reported_instead_of_only_the_first() -> None:
+    edge = PART_OF.model_copy(update={"source_id": "dense-retrieval", "target_id": "sparse-retrieval"})
+    issues = check_relations_against_concepts(
+        GeneralKnowledgeProposal(concept_relations=(PART_OF, edge)), (RAG, CHUNKING, KNOWLEDGE_GRAPH)
+    )
+    assert [issue.path for issue in issues] == [
+        "concept_relations[1].source_id",
+        "concept_relations[1].target_id",
+    ]

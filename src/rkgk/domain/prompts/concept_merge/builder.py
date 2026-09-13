@@ -1,6 +1,6 @@
-"""Builds the prompt that asks an agent to normalize the concepts extracted from every paper.
+"""Builds the prompt that asks an agent to merge the concepts extracted from every paper into one vocabulary.
 
-The prose that is only this prompt's lives in the .md files next to this module, and the sections both
+The prose that is only this prompt's lives in the .md files next to this module, and the sections the
 prompts share in ../vocabulary.py and ../retry.py; this module assembles them and loops over the extracted concepts.
 """
 
@@ -41,12 +41,12 @@ _PAPERS_HEADING = (
 )
 
 
-def build_concept_normalization_prompt(
+def build_concept_merge_prompt(
     extractions: tuple[PaperExtraction, ...],
     previous: object | None = None,
     issues: tuple[ConceptNormalizationIssue, ...] = (),
 ) -> str:
-    """Write the instructions and the extracted concepts an agent needs to normalize them in one pass.
+    """Write the instructions and the extracted concepts an agent needs to merge them in one pass.
 
     A retry gets the rejected JSON and the issues appended, so the agent corrects its own answer instead of
     starting over and losing the parts that were already right.

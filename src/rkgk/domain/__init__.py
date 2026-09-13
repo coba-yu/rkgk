@@ -10,15 +10,20 @@ from rkgk.domain.models.base import SLUG_PATTERN, Entity, Slug
 from rkgk.domain.models.chunk import CHUNK_ID_PATTERN, Chunk
 from rkgk.domain.models.concept_normalization import (
     CONCEPT_NORMALIZATION_SCHEMA_VERSION,
+    ConceptMerge,
     ConceptNormalization,
     ConceptNormalizationIssue,
     ConceptNormalizationRun,
+    ConceptNormalizationStage,
     ConceptNormalizationValidationError,
     GeneralKnowledgeEdge,
+    GeneralKnowledgeProposal,
     LocalConceptRef,
     MissingPaperExtractionsError,
     NormalizedConcept,
+    build_concept_merge_schema,
     build_concept_normalization_schema,
+    build_general_knowledge_schema,
 )
 from rkgk.domain.models.embedding import EmbeddedItem, EmbeddedItemKind, EmbeddingTable
 from rkgk.domain.models.graph import (
@@ -87,7 +92,8 @@ from rkgk.domain.models.vocabulary import (
     traversable_concept_types,
     traversable_paper_relations,
 )
-from rkgk.domain.prompts.concept_normalization.builder import build_concept_normalization_prompt
+from rkgk.domain.prompts.concept_merge.builder import build_concept_merge_prompt
+from rkgk.domain.prompts.general_knowledge.builder import build_general_knowledge_prompt
 from rkgk.domain.prompts.paper_extraction.builder import build_paper_extraction_prompt
 from rkgk.domain.repositories.concept_normalization import (
     ConceptNormalizationArtifactInvalidError,
@@ -119,7 +125,11 @@ from rkgk.domain.repositories.paper_extraction import (
     PaperExtractionRepositoryError,
 )
 from rkgk.domain.services.chunking import DEFAULT_MAX_TOKENS, chunk_paper
-from rkgk.domain.services.concept_normalization import check_normalization_against_extractions
+from rkgk.domain.services.concept_normalization import (
+    check_merge_against_extractions,
+    check_normalization_against_extractions,
+    check_relations_against_concepts,
+)
 from rkgk.domain.services.embedding_items import build_embedding_items, concept_embedding_text
 from rkgk.domain.services.evidence_resolver import find_chunk, resolve_extraction_evidence
 from rkgk.domain.services.graph_builder import build_knowledge_graph, build_paper_node_id, to_networkx
@@ -151,6 +161,7 @@ __all__ = [
     "Concept",
     "ConceptEdge",
     "ConceptHop",
+    "ConceptMerge",
     "ConceptNeighborhoodTraversal",
     "ConceptNormalization",
     "ConceptNormalizationArtifactInvalidError",
@@ -160,6 +171,7 @@ __all__ = [
     "ConceptNormalizationRepository",
     "ConceptNormalizationRepositoryError",
     "ConceptNormalizationRun",
+    "ConceptNormalizationStage",
     "ConceptNormalizationValidationError",
     "ConceptRelationSpec",
     "ConceptRelationType",
@@ -177,6 +189,7 @@ __all__ = [
     "ExtractedConceptEdge",
     "ExtractedPaperConceptEdge",
     "GeneralKnowledgeEdge",
+    "GeneralKnowledgeProposal",
     "IndexArtifactInvalidError",
     "IndexArtifactUnreadableError",
     "IndexBuildRun",
@@ -231,15 +244,20 @@ __all__ = [
     "TraversalPath",
     "TraversalStrategy",
     "UnresolvedEvidence",
-    "build_concept_normalization_prompt",
+    "build_concept_merge_prompt",
+    "build_concept_merge_schema",
     "build_concept_normalization_schema",
     "build_embedding_items",
+    "build_general_knowledge_prompt",
+    "build_general_knowledge_schema",
     "build_knowledge_graph",
     "build_paper_dir_name",
     "build_paper_extraction_prompt",
     "build_paper_extraction_schema",
     "check_extraction_against_paper",
+    "check_merge_against_extractions",
     "check_normalization_against_extractions",
+    "check_relations_against_concepts",
     "chunk_paper",
     "compute_cosine_scores",
     "concept_embedding_text",
