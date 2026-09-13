@@ -4,6 +4,11 @@ The model is loaded on the first call, not in the constructor, so that a command
 anything does not pay for the load.
 sentence-transformers and torch are an optional extra (`embedding`) because they weigh far more than the rest of
 the package and only the build and search commands need them.
+The defaults are chosen for the memory of a 16 GB Mac rather than for throughput: on MPS the PyTorch allocator
+keeps the working buffers of the largest batch, and with batches of 16 chunks of up to 512 words that reached
+13 GB of GPU memory and pushed the rest of the system into swap (2026-09-13, 2,047 texts).
+Batches of 4 in half precision peaked at 5.7 GB for the same texts, at the same speed, because the model is
+compute-bound on the GPU either way.
 """
 
 from collections.abc import Sequence
@@ -15,7 +20,7 @@ from numpy.typing import NDArray
 from rkgk.domain.embedders import EmbedderError
 
 DEFAULT_MODEL_NAME = "Qwen/Qwen3-Embedding-0.6B"
-DEFAULT_BATCH_SIZE = 16
+DEFAULT_BATCH_SIZE = 4
 # The name of the instruction prompt that the Qwen3-Embedding model cards ship in their sentence-transformers
 # configuration; documents are encoded without a prompt.
 QUERY_PROMPT_NAME = "query"
@@ -68,8 +73,11 @@ class Qwen3Embedder:
             raise EmbedderError(
                 "sentence-transformers is not installed; install the `embedding` extra to use Qwen3Embedder"
             ) from error
+        device = self._device or _default_device()
         try:
-            self._model = SentenceTransformer(self._model_name, device=self._device or _default_device())
+            self._model = SentenceTransformer(
+                self._model_name, device=device, model_kwargs={"dtype": _default_dtype(device)}
+            )
         except Exception as error:
             raise EmbedderError(f"{self._model_name} could not be loaded: {error}") from error
         return self._model
@@ -81,3 +89,12 @@ def _default_device() -> str:
     import torch
 
     return "mps" if torch.backends.mps.is_available() else "cpu"
+
+
+def _default_dtype(device: str) -> Any:
+    # Half precision halves the weights and the working buffers on the GPU and matches the full-precision vectors
+    # to four decimals of cosine similarity; the CPU keeps full precision because its half-precision kernels are
+    # the slow path.
+    import torch
+
+    return torch.float32 if device == "cpu" else torch.float16
