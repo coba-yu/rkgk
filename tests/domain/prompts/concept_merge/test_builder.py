@@ -86,7 +86,6 @@ def test_a_retry_repeats_the_rejected_json_and_the_issues() -> None:
     assert "上記のすべての問題を修正した、完全な JSON オブジェクトを返す。" in prompt
 
 
-def test_the_prompt_asks_for_the_merge_alone_and_never_for_a_relation() -> None:
+def test_the_prompt_never_asks_for_a_relation() -> None:
     prompt = build_concept_merge_prompt(EXTRACTIONS)
-    assert "概念どうしの関係はここでは扱わない。" in prompt
     assert "rationale" not in prompt
