@@ -7,7 +7,7 @@ from rkgk.domain.models.concept_normalization import (
     ConceptMerge,
     ConceptNormalization,
     ConceptNormalizationIssue,
-    GeneralKnowledgeProposal,
+    GeneralKnowledgeRelationProposal,
     NormalizedConcept,
 )
 from rkgk.domain.models.paper_extraction import PaperExtraction
@@ -84,7 +84,7 @@ def check_normalization_against_extractions(
 
 
 def check_relations_against_concepts(
-    proposal: GeneralKnowledgeProposal, concepts: tuple[NormalizedConcept, ...]
+    proposal: GeneralKnowledgeRelationProposal, concepts: tuple[NormalizedConcept, ...]
 ) -> tuple[ConceptNormalizationIssue, ...]:
     """Report every proposed relation that stands on a slug the merge never declared.
 

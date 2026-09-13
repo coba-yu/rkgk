@@ -13,13 +13,13 @@ from rkgk.domain.models.concept_normalization import (
     ConceptNormalizationRun,
     ConceptNormalizationValidationError,
     GeneralKnowledgeEdge,
-    GeneralKnowledgeProposal,
+    GeneralKnowledgeRelationProposal,
     LocalConceptRef,
     MissingPaperExtractionsError,
     NormalizedConcept,
     build_concept_merge_schema,
     build_concept_normalization_schema,
-    build_general_knowledge_schema,
+    build_general_knowledge_relation_proposal_schema,
 )
 from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType
 
@@ -180,17 +180,17 @@ def test_a_merge_without_concepts_is_rejected() -> None:
 
 
 def test_a_proposal_without_relations_is_accepted() -> None:
-    assert GeneralKnowledgeProposal().concept_relations == ()
+    assert GeneralKnowledgeRelationProposal().concept_relations == ()
 
 
 def test_a_proposal_that_repeats_a_pair_and_relation_is_rejected() -> None:
     with pytest.raises(ValidationError, match="repeats 'page-aligned-chunking' -> 'retrieval-augmented-generation'"):
-        GeneralKnowledgeProposal(concept_relations=(PART_OF, PART_OF))
+        GeneralKnowledgeRelationProposal(concept_relations=(PART_OF, PART_OF))
 
 
 def test_a_proposal_on_a_slug_no_concept_declares_is_left_to_the_service() -> None:
     edge = PART_OF.model_copy(update={"target_id": "dense-retrieval"})
-    assert GeneralKnowledgeProposal(concept_relations=(edge,)).concept_relations == (edge,)
+    assert GeneralKnowledgeRelationProposal(concept_relations=(edge,)).concept_relations == (edge,)
 
 
 def test_the_schema_describes_the_provenance_and_the_slug_pattern() -> None:
@@ -210,7 +210,7 @@ def test_the_merge_schema_asks_for_the_concepts_and_for_no_version() -> None:
 
 
 def test_the_general_knowledge_schema_asks_for_the_relations_with_their_rationale() -> None:
-    schema = build_general_knowledge_schema()
+    schema = build_general_knowledge_relation_proposal_schema()
     definitions = schema["$defs"]
     properties = schema["properties"]
     assert isinstance(definitions, dict)
@@ -220,7 +220,8 @@ def test_the_general_knowledge_schema_asks_for_the_relations_with_their_rational
 
 
 @pytest.mark.parametrize(
-    "build_schema", [build_concept_normalization_schema, build_concept_merge_schema, build_general_knowledge_schema]
+    "build_schema",
+    [build_concept_normalization_schema, build_concept_merge_schema, build_general_knowledge_relation_proposal_schema],
 )
 def test_the_schema_is_json_serializable(build_schema: Callable[[], dict[str, object]]) -> None:
     assert json.loads(json.dumps(build_schema())) == build_schema()

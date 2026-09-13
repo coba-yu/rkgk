@@ -17,13 +17,13 @@ from rkgk.domain.models.concept_normalization import (
     ConceptNormalizationStage,
     ConceptNormalizationValidationError,
     GeneralKnowledgeEdge,
-    GeneralKnowledgeProposal,
+    GeneralKnowledgeRelationProposal,
     LocalConceptRef,
     MissingPaperExtractionsError,
     NormalizedConcept,
     build_concept_merge_schema,
     build_concept_normalization_schema,
-    build_general_knowledge_schema,
+    build_general_knowledge_relation_proposal_schema,
 )
 from rkgk.domain.models.embedding import EmbeddedItem, EmbeddedItemKind, EmbeddingTable
 from rkgk.domain.models.graph import (
@@ -93,7 +93,7 @@ from rkgk.domain.models.vocabulary import (
     traversable_paper_relations,
 )
 from rkgk.domain.prompts.concept_merge.builder import build_concept_merge_prompt
-from rkgk.domain.prompts.general_knowledge.builder import build_general_knowledge_prompt
+from rkgk.domain.prompts.general_knowledge_relations.builder import build_general_knowledge_relations_prompt
 from rkgk.domain.prompts.paper_extraction.builder import build_paper_extraction_prompt
 from rkgk.domain.repositories.concept_normalization import (
     ConceptNormalizationArtifactInvalidError,
@@ -189,7 +189,7 @@ __all__ = [
     "ExtractedConceptEdge",
     "ExtractedPaperConceptEdge",
     "GeneralKnowledgeEdge",
-    "GeneralKnowledgeProposal",
+    "GeneralKnowledgeRelationProposal",
     "IndexArtifactInvalidError",
     "IndexArtifactUnreadableError",
     "IndexBuildRun",
@@ -248,8 +248,8 @@ __all__ = [
     "build_concept_merge_schema",
     "build_concept_normalization_schema",
     "build_embedding_items",
-    "build_general_knowledge_prompt",
-    "build_general_knowledge_schema",
+    "build_general_knowledge_relation_proposal_schema",
+    "build_general_knowledge_relations_prompt",
     "build_knowledge_graph",
     "build_paper_dir_name",
     "build_paper_extraction_prompt",

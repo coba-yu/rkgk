@@ -2,7 +2,7 @@ from rkgk.domain.models.concept_normalization import (
     ConceptMerge,
     ConceptNormalization,
     GeneralKnowledgeEdge,
-    GeneralKnowledgeProposal,
+    GeneralKnowledgeRelationProposal,
     LocalConceptRef,
     NormalizedConcept,
 )
@@ -162,18 +162,18 @@ def test_a_merge_that_invents_a_reference_is_reported_with_its_path() -> None:
 
 
 def test_relations_between_declared_concepts_are_accepted() -> None:
-    proposal = GeneralKnowledgeProposal(concept_relations=(PART_OF,))
+    proposal = GeneralKnowledgeRelationProposal(concept_relations=(PART_OF,))
     assert check_relations_against_concepts(proposal, (RAG, CHUNKING, KNOWLEDGE_GRAPH)) == ()
 
 
 def test_a_proposal_without_relations_is_accepted() -> None:
-    assert check_relations_against_concepts(GeneralKnowledgeProposal(), (RAG, CHUNKING)) == ()
+    assert check_relations_against_concepts(GeneralKnowledgeRelationProposal(), (RAG, CHUNKING)) == ()
 
 
 def test_a_relation_on_a_slug_no_concept_declares_is_reported_with_that_slug() -> None:
     edge = PART_OF.model_copy(update={"target_id": "dense-retrieval"})
     issues = check_relations_against_concepts(
-        GeneralKnowledgeProposal(concept_relations=(edge,)), (RAG, CHUNKING, KNOWLEDGE_GRAPH)
+        GeneralKnowledgeRelationProposal(concept_relations=(edge,)), (RAG, CHUNKING, KNOWLEDGE_GRAPH)
     )
     assert [issue.path for issue in issues] == ["concept_relations[0].target_id"]
     assert issues[0].message == "is 'dense-retrieval', which is not one of the normalized concepts"
@@ -182,7 +182,7 @@ def test_a_relation_on_a_slug_no_concept_declares_is_reported_with_that_slug() -
 def test_both_ends_of_a_relation_are_reported_instead_of_only_the_first() -> None:
     edge = PART_OF.model_copy(update={"source_id": "dense-retrieval", "target_id": "sparse-retrieval"})
     issues = check_relations_against_concepts(
-        GeneralKnowledgeProposal(concept_relations=(PART_OF, edge)), (RAG, CHUNKING, KNOWLEDGE_GRAPH)
+        GeneralKnowledgeRelationProposal(concept_relations=(PART_OF, edge)), (RAG, CHUNKING, KNOWLEDGE_GRAPH)
     )
     assert [issue.path for issue in issues] == [
         "concept_relations[1].source_id",

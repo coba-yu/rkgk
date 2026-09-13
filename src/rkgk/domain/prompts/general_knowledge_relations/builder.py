@@ -42,7 +42,7 @@ _CONCEPTS_HEADING = (
 )
 
 
-def build_general_knowledge_prompt(
+def build_general_knowledge_relations_prompt(
     concepts: tuple[NormalizedConcept, ...],
     previous: object | None = None,
     issues: tuple[ConceptNormalizationIssue, ...] = (),

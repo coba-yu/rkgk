@@ -6,7 +6,7 @@ a slug and records every spelling it was merged from in `aliases`.
 The agent also proposes concept-to-concept relations from general knowledge, which carry a rationale instead of
 evidence because no single paper backs them.
 The two jobs are asked for one at a time: `ConceptMerge` is what the agent answers about the merge and
-`GeneralKnowledgeProposal` what it answers about the relations, while `ConceptNormalization` is the artifact
+`GeneralKnowledgeRelationProposal` what it answers about the relations, while `ConceptNormalization` is the artifact
 assembled from both and the only one of the three that is stored.
 """
 
@@ -120,7 +120,7 @@ class ConceptMerge(Entity):
         return self
 
 
-class GeneralKnowledgeProposal(Entity):
+class GeneralKnowledgeRelationProposal(Entity):
     """What the agent answers when it is asked only for the relations between the merged concepts.
 
     Empty is a valid answer: a vocabulary whose concepts share nothing beyond the papers is not an error.
@@ -193,9 +193,9 @@ def build_concept_merge_schema() -> dict[str, object]:
     return ConceptMerge.model_json_schema()
 
 
-def build_general_knowledge_schema() -> dict[str, object]:
+def build_general_knowledge_relation_proposal_schema() -> dict[str, object]:
     """Render the schema the relation stage must follow; it is generated so the prompt cannot drift."""
-    return GeneralKnowledgeProposal.model_json_schema()
+    return GeneralKnowledgeRelationProposal.model_json_schema()
 
 
 class ConceptNormalizationRun(Entity):
