@@ -1,3 +1,5 @@
+from typing import Any
+
 import numpy as np
 import pytest
 
@@ -5,8 +7,55 @@ from rkgk.domain.embedders import EmbedderError
 from rkgk.infrastructure.qwen3_embedder import Qwen3Embedder
 
 
+class _RecordingModel:
+    """Stands in for SentenceTransformer to capture how it is constructed and called."""
+
+    instances: list["_RecordingModel"] = []
+
+    def __init__(self, model_name: str, **kwargs: Any) -> None:
+        self.model_name = model_name
+        self.kwargs = kwargs
+        self.encode_calls: list[dict[str, Any]] = []
+        _RecordingModel.instances.append(self)
+
+    def encode(self, texts: list[str], **kwargs: Any) -> np.ndarray:
+        self.encode_calls.append(kwargs)
+        return np.ones((len(texts), 4), dtype=np.float32)
+
+    def get_embedding_dimension(self) -> int:
+        return 4
+
+
+@pytest.fixture
+def recording_model(monkeypatch: pytest.MonkeyPatch) -> type[_RecordingModel]:
+    sentence_transformers = pytest.importorskip("sentence_transformers")
+    monkeypatch.setattr(sentence_transformers, "SentenceTransformer", _RecordingModel)
+    _RecordingModel.instances.clear()
+    return _RecordingModel
+
+
 def test_the_model_name_is_reported_before_the_model_is_loaded() -> None:
     assert Qwen3Embedder().model_name == "Qwen/Qwen3-Embedding-0.6B"
+
+
+def test_documents_are_encoded_four_at_a_time_by_default(recording_model: type[_RecordingModel]) -> None:
+    Qwen3Embedder(device="cpu").embed_documents(["a", "b"])
+    assert recording_model.instances[0].encode_calls[0]["batch_size"] == 4
+
+
+def test_the_gpu_loads_the_model_in_half_precision(recording_model: type[_RecordingModel]) -> None:
+    import torch
+
+    Qwen3Embedder(device="mps").embed_documents(["a"])
+    assert recording_model.instances[0].kwargs["model_kwargs"] == {"dtype": torch.float16}
+
+
+@pytest.mark.parametrize("device", ["cpu", "cpu:0"])
+def test_the_cpu_keeps_full_precision(recording_model: type[_RecordingModel], device: str) -> None:
+    import torch
+
+    Qwen3Embedder(device=device).embed_documents(["a"])
+    assert recording_model.instances[0].kwargs["model_kwargs"] == {"dtype": torch.float32}
 
 
 def test_a_model_that_cannot_be_loaded_is_reported(tmp_path: str) -> None:
