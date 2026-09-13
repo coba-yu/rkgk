@@ -50,10 +50,11 @@ def test_the_gpu_loads_the_model_in_half_precision(recording_model: type[_Record
     assert recording_model.instances[0].kwargs["model_kwargs"] == {"dtype": torch.float16}
 
 
-def test_the_cpu_keeps_full_precision(recording_model: type[_RecordingModel]) -> None:
+@pytest.mark.parametrize("device", ["cpu", "cpu:0"])
+def test_the_cpu_keeps_full_precision(recording_model: type[_RecordingModel], device: str) -> None:
     import torch
 
-    Qwen3Embedder(device="cpu").embed_documents(["a"])
+    Qwen3Embedder(device=device).embed_documents(["a"])
     assert recording_model.instances[0].kwargs["model_kwargs"] == {"dtype": torch.float32}
 
 

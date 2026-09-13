@@ -97,4 +97,6 @@ def _default_dtype(device: str) -> Any:
     # the slow path.
     import torch
 
-    return torch.float32 if device == "cpu" else torch.float16
+    # torch.device parses an indexed spelling such as "cpu:0" down to its type, which a string comparison would
+    # miss and send the CPU through half precision.
+    return torch.float32 if torch.device(device).type == "cpu" else torch.float16
