@@ -8,8 +8,7 @@ Each stage is validated and retried on its own, so `attempts` reports a count pe
 the `stage` it comes from.
 The command takes no paper id because normalization is one cross-paper step: it reads the whole index and fails
 when any paper of it has not been extracted yet.
-The embedder is loaded here, so the command runs under `uv run --extra embedding` unless `--embedder fake` is
-given.
+The embedder is loaded here, so the command runs under `uv run --extra embedding`.
 """
 
 import argparse
@@ -18,7 +17,7 @@ from pathlib import Path
 
 from rkgk.cli._shared import EXIT_ERROR, EXIT_INVALID, EXIT_OK, print_json
 from rkgk.domain.agents import StructuredOutputAgentError
-from rkgk.domain.embedders import Embedder, EmbedderError
+from rkgk.domain.embedders import EmbedderError
 from rkgk.domain.models.concept_normalization import (
     ConceptNormalization,
     ConceptNormalizationIssue,
@@ -30,7 +29,6 @@ from rkgk.domain.repositories.paper import PaperRepositoryError
 from rkgk.domain.repositories.paper_extraction import PaperExtractionRepositoryError
 from rkgk.domain.services.concept_candidates import DEFAULT_NEIGHBORS
 from rkgk.infrastructure.claude_code_agent import ClaudeCodeAgent
-from rkgk.infrastructure.fake_embedder import FakeEmbedder
 from rkgk.infrastructure.file_concept_normalization_repository import FileConceptNormalizationRepository
 from rkgk.infrastructure.file_paper_extraction_repository import FilePaperExtractionRepository
 from rkgk.infrastructure.file_paper_repository import FilePaperRepository
@@ -45,14 +43,6 @@ HELP = (
 
 DEFAULT_DATA_DIR = Path("data")
 DEFAULT_MAX_ATTEMPTS = 3
-QWEN3_EMBEDDER = "qwen3"
-FAKE_EMBEDDER = "fake"
-
-
-def _build_embedder(args: argparse.Namespace) -> Embedder:
-    if args.embedder == FAKE_EMBEDDER:
-        return FakeEmbedder()
-    return Qwen3Embedder(model_name=args.embedding_model)
 
 
 def _run(args: argparse.Namespace) -> int:
@@ -61,7 +51,7 @@ def _run(args: argparse.Namespace) -> int:
         FilePaperRepository(args.data_dir),
         FilePaperExtractionRepository(args.data_dir),
         ClaudeCodeAgent(model=args.model),
-        _build_embedder(args),
+        Qwen3Embedder(model_name=args.embedding_model),
         normalization_repository,
         max_attempts=args.max_attempts,
         neighbors=args.neighbors,
@@ -127,15 +117,9 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR)
     parser.add_argument("--model", default=None, help="model passed to the Claude CLI; its default is used when unset")
     parser.add_argument(
-        "--embedder",
-        choices=[QWEN3_EMBEDDER, FAKE_EMBEDDER],
-        default=QWEN3_EMBEDDER,
-        help="fake derives vectors from a hash of the text, which checks the wiring without loading a model",
-    )
-    parser.add_argument(
         "--embedding-model",
         default=DEFAULT_MODEL_NAME,
-        help="model the qwen3 embedder loads; ignored by the fake embedder",
+        help="model the qwen3 embedder loads",
     )
     parser.add_argument(
         "--neighbors",

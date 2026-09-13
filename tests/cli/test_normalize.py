@@ -12,6 +12,7 @@ from rkgk.cli import normalize
 from rkgk.cli.normalize import main
 from rkgk.domain.agents import StructuredOutputAgentError
 from rkgk.domain.embedders import EmbedderError
+from rkgk.infrastructure.fake_embedder import FakeEmbedder
 
 FIXTURE_DIR = Path(__file__).parent.parent / "fixtures"
 
@@ -106,9 +107,10 @@ def install_agent(monkeypatch: pytest.MonkeyPatch, *payloads: object) -> None:
     monkeypatch.setattr(normalize, "ClaudeCodeAgent", lambda model=None: FakeAgent(*payloads))
 
 
-def run(data_dir: Path, *extra: str) -> int:
-    # The fake embedder keeps the command out of sentence-transformers, which the tests do not install.
-    return main(["--data-dir", str(data_dir), "--embedder", "fake", "--concurrency", "1", *extra])
+def run(monkeypatch: pytest.MonkeyPatch, data_dir: Path, *extra: str) -> int:
+    # The tests do not install sentence-transformers, so the Qwen3 embedder is replaced with the fake one.
+    monkeypatch.setattr(normalize, "Qwen3Embedder", lambda model_name: FakeEmbedder())
+    return main(["--data-dir", str(data_dir), "--concurrency", "1", *extra])
 
 
 def install_failing_agent(monkeypatch: pytest.MonkeyPatch, message: str) -> None:
@@ -136,7 +138,7 @@ def test_run_normalizes_every_extracted_paper_and_writes_both_files(
     data_dir = copy_fixture(tmp_path)
     write_extractions(data_dir)
     install_agent(monkeypatch, GROUPING, VALID_MERGE, VALID_RELATIONS)
-    assert run(data_dir) == 0
+    assert run(monkeypatch, data_dir) == 0
     output = read_output(capsys)
     assert output["status"] == "ok"
     assert output["papers"] == 2
@@ -163,7 +165,7 @@ def test_run_normalizes_a_concept_no_group_holds_without_asking_the_agent(
     data_dir = copy_fixture(tmp_path)
     write_extractions(data_dir)
     install_agent(monkeypatch, {"groups": []}, {"concept_relations": []})
-    assert run(data_dir) == 0
+    assert run(monkeypatch, data_dir) == 0
     output = read_output(capsys)
     assert output["groups"] == 0
     assert output["concepts"] == 4
@@ -184,7 +186,7 @@ def test_run_counts_the_attempts_each_stage_needed_to_correct_itself(
         UNKNOWN_RELATIONS,
         VALID_RELATIONS,
     )
-    assert run(data_dir) == 0
+    assert run(monkeypatch, data_dir) == 0
     assert read_output(capsys)["attempts"] == {
         "grouping": 2,
         "merge_calls": 2,
@@ -200,7 +202,7 @@ def test_run_reports_the_issues_of_the_merge_when_the_agent_keeps_failing(
     write_extractions(data_dir)
     rejected = build_incomplete_merge()
     install_agent(monkeypatch, GROUPING, rejected, rejected)
-    assert run(data_dir, "--max-attempts", "2") == 1
+    assert run(monkeypatch, data_dir, "--max-attempts", "2") == 1
     output = read_output(capsys)
     assert output["status"] == "invalid"
     assert output["stage"] == "merge"
@@ -217,7 +219,7 @@ def test_run_reports_the_grouping_stage_when_the_agent_keeps_naming_concepts_tha
     write_extractions(data_dir)
     rejected = build_unknown_grouping()
     install_agent(monkeypatch, rejected, rejected)
-    assert run(data_dir, "--max-attempts", "2") == 1
+    assert run(monkeypatch, data_dir, "--max-attempts", "2") == 1
     output = read_output(capsys)
     assert output["status"] == "invalid"
     assert output["stage"] == "grouping"
@@ -231,7 +233,7 @@ def test_run_reports_the_relation_stage_and_writes_nothing_when_it_keeps_failing
     data_dir = copy_fixture(tmp_path)
     write_extractions(data_dir)
     install_agent(monkeypatch, GROUPING, VALID_MERGE, UNKNOWN_RELATIONS, UNKNOWN_RELATIONS)
-    assert run(data_dir, "--max-attempts", "2") == 1
+    assert run(monkeypatch, data_dir, "--max-attempts", "2") == 1
     output = read_output(capsys)
     assert output["status"] == "invalid"
     assert output["stage"] == "relations"
@@ -246,7 +248,7 @@ def test_run_reports_every_paper_that_has_not_been_extracted_yet(
 ) -> None:
     data_dir = copy_fixture(tmp_path)
     install_agent(monkeypatch, GROUPING, VALID_MERGE, VALID_RELATIONS)
-    assert run(data_dir) == 2
+    assert run(monkeypatch, data_dir) == 2
     output = read_output(capsys)
     assert output["status"] == "error"
     assert "1, 2" in output["message"]
@@ -258,7 +260,7 @@ def test_run_reports_an_agent_that_cannot_be_started(
     data_dir = copy_fixture(tmp_path)
     write_extractions(data_dir)
     install_failing_agent(monkeypatch, "claude was not found, so no normalization can run")
-    assert run(data_dir) == 2
+    assert run(monkeypatch, data_dir) == 2
     output = read_output(capsys)
     assert output["status"] == "error"
     assert "claude was not found" in output["message"]
@@ -268,7 +270,7 @@ def test_run_reports_a_data_directory_without_an_index(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     install_agent(monkeypatch, GROUPING, VALID_MERGE, VALID_RELATIONS)
-    assert run(tmp_path / "empty") == 2
+    assert run(monkeypatch, tmp_path / "empty") == 2
     assert read_output(capsys)["status"] == "error"
 
 
@@ -279,7 +281,7 @@ def test_run_reports_an_index_without_papers(
     (data_dir / "papers").mkdir(parents=True)
     (data_dir / "papers" / "index.json").write_text('{"papers": []}', encoding="utf-8")
     install_agent(monkeypatch, GROUPING, VALID_MERGE, VALID_RELATIONS)
-    assert run(data_dir) == 2
+    assert run(monkeypatch, data_dir) == 2
     assert read_output(capsys)["message"] == "no papers in the index"
 
 
@@ -295,7 +297,7 @@ def test_run_passes_the_chosen_model_to_the_agent(
         return FakeAgent(GROUPING, VALID_MERGE, VALID_RELATIONS)
 
     monkeypatch.setattr(normalize, "ClaudeCodeAgent", _build)
-    assert run(data_dir, "--model", "claude-opus-4") == 0
+    assert run(monkeypatch, data_dir, "--model", "claude-opus-4") == 0
     assert seen == ["claude-opus-4"]
 
 
@@ -366,11 +368,10 @@ def test_a_count_below_one_is_a_usage_error(
     assert "must be at least 1" in capsys.readouterr().err
 
 
-def test_help_names_the_embedder_and_the_grouping_options(capsys: pytest.CaptureFixture[str]) -> None:
+def test_help_names_the_embedding_model_and_the_grouping_options(capsys: pytest.CaptureFixture[str]) -> None:
     with pytest.raises(SystemExit):
         main(["--help"])
     output = capsys.readouterr().out
-    assert "--embedder" in output
     assert "--embedding-model" in output
     assert "--neighbors" in output
     assert "--concurrency" in output

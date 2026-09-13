@@ -108,8 +108,7 @@ uv run --extra embedding normalize
 | --- | --- | --- |
 | `--data-dir` | `data` | 読み書きするデータディレクトリ |
 | `--model` | Claude CLI の既定 | `claude -p` に渡すモデル |
-| `--embedder` | `qwen3` | 段 0 の埋め込み器。`fake` はテキストのハッシュからベクトルを作る |
-| `--embedding-model` | `Qwen/Qwen3-Embedding-0.6B` | `qwen3` が読むモデル。`fake` では無視する |
+| `--embedding-model` | `Qwen/Qwen3-Embedding-0.6B` | 段 0 で読む埋め込みモデル |
 | `--neighbors` | 5 | 段 0 で 1 概念あたり何件の近い概念とペアにするか |
 | `--concurrency` | 4 | 段 2 で同時に投げる群の数 |
 | `--max-attempts` | 3 | 段ごとの再試行の上限、および段 3 の周回数の上限 |
