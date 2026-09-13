@@ -7,6 +7,8 @@ from pydantic import ValidationError
 from rkgk.domain.models.base import SLUG_PATTERN
 from rkgk.domain.models.concept_normalization import (
     CONCEPT_NORMALIZATION_SCHEMA_VERSION,
+    CandidatePair,
+    ConceptGrouping,
     ConceptMerge,
     ConceptNormalization,
     ConceptNormalizationIssue,
@@ -18,6 +20,7 @@ from rkgk.domain.models.concept_normalization import (
     MissingPaperExtractionsError,
     NormalizedConcept,
     PaperStatedRelation,
+    build_concept_grouping_schema,
     build_concept_merge_schema,
     build_concept_normalization_schema,
     build_general_knowledge_relation_proposal_schema,
@@ -234,6 +237,76 @@ def test_the_schema_describes_the_provenance_and_the_slug_pattern() -> None:
     assert SLUG_PATTERN in json.dumps(schema)
 
 
+def test_a_candidate_pair_keeps_the_two_concepts_and_how_close_they_are() -> None:
+    pair = CandidatePair(
+        left=LocalConceptRef(paper_id=1, local_id="c1"),
+        right=LocalConceptRef(paper_id=2, local_id="c1"),
+        score=0.87,
+    )
+    assert pair.left.paper_id == 1
+    assert pair.right.local_id == "c1"
+    assert pair.score == 0.87
+
+
+def test_a_candidate_pair_accepts_a_score_below_zero() -> None:
+    pair = CandidatePair(
+        left=LocalConceptRef(paper_id=1, local_id="c1"),
+        right=LocalConceptRef(paper_id=2, local_id="c1"),
+        score=-0.2,
+    )
+    assert pair.score == -0.2
+
+
+def test_a_grouping_keeps_every_group_in_the_order_it_was_given() -> None:
+    grouping = ConceptGrouping(
+        groups=(
+            (LocalConceptRef(paper_id=1, local_id="c1"), LocalConceptRef(paper_id=2, local_id="c1")),
+            (LocalConceptRef(paper_id=1, local_id="c2"), LocalConceptRef(paper_id=2, local_id="c2")),
+        )
+    )
+    assert [len(group) for group in grouping.groups] == [2, 2]
+    assert grouping.groups[1][0].local_id == "c2"
+
+
+def test_a_grouping_without_groups_is_accepted() -> None:
+    assert ConceptGrouping().groups == ()
+
+
+def test_a_group_of_one_concept_is_rejected_with_its_position() -> None:
+    with pytest.raises(ValidationError, match="groups\\[1\\] holds 1 concepts"):
+        ConceptGrouping(
+            groups=(
+                (LocalConceptRef(paper_id=1, local_id="c1"), LocalConceptRef(paper_id=2, local_id="c1")),
+                (LocalConceptRef(paper_id=1, local_id="c2"),),
+            )
+        )
+
+
+def test_one_concept_in_two_groups_is_rejected_with_that_concept() -> None:
+    with pytest.raises(ValidationError, match="paper 1 'c1' in more than one group"):
+        ConceptGrouping(
+            groups=(
+                (LocalConceptRef(paper_id=1, local_id="c1"), LocalConceptRef(paper_id=2, local_id="c1")),
+                (LocalConceptRef(paper_id=1, local_id="c1"), LocalConceptRef(paper_id=2, local_id="c2")),
+            )
+        )
+
+
+def test_the_same_concept_twice_in_one_group_is_rejected() -> None:
+    with pytest.raises(ValidationError, match="more than one group"):
+        ConceptGrouping(groups=((LocalConceptRef(paper_id=1, local_id="c1"),) * 2,))
+
+
+def test_the_grouping_schema_asks_for_the_groups_of_local_references() -> None:
+    schema = build_concept_grouping_schema()
+    definitions = schema["$defs"]
+    properties = schema["properties"]
+    assert isinstance(definitions, dict)
+    assert isinstance(properties, dict)
+    assert properties.keys() == {"groups"}
+    assert definitions["LocalConceptRef"]["properties"].keys() == {"paper_id", "local_id"}
+
+
 def test_the_merge_schema_asks_for_the_concepts_and_for_no_version() -> None:
     schema = build_concept_merge_schema()
     properties = schema["properties"]
@@ -254,7 +327,12 @@ def test_the_general_knowledge_schema_asks_for_the_relations_with_their_rational
 
 @pytest.mark.parametrize(
     "build_schema",
-    [build_concept_normalization_schema, build_concept_merge_schema, build_general_knowledge_relation_proposal_schema],
+    [
+        build_concept_normalization_schema,
+        build_concept_grouping_schema,
+        build_concept_merge_schema,
+        build_general_knowledge_relation_proposal_schema,
+    ],
 )
 def test_the_schema_is_json_serializable(build_schema: Callable[[], dict[str, object]]) -> None:
     assert json.loads(json.dumps(build_schema())) == build_schema()
@@ -268,20 +346,40 @@ def test_a_rejection_keeps_the_stage_it_came_from_and_its_issues() -> None:
     assert "concept_relations[0].source_id: is not a concept" in str(error)
 
 
-def test_a_run_counts_the_attempts_of_each_stage_apart() -> None:
-    run = ConceptNormalizationRun(
-        normalization=build_normalization(), merge_attempts=1, relation_attempts=3, paper_ids=(1, 2)
-    )
+def build_run(**overrides: int) -> ConceptNormalizationRun:
+    counts: dict[str, int] = {
+        "grouping_attempts": 1,
+        "groups": 2,
+        "merge_calls": 3,
+        "merge_rounds": 1,
+        "relation_attempts": 1,
+    }
+    counts.update(overrides)
+    return ConceptNormalizationRun(normalization=build_normalization(), paper_ids=(1, 2), **counts)
+
+
+def test_a_run_counts_what_each_stage_cost_apart() -> None:
+    run = build_run(grouping_attempts=2, groups=4, merge_calls=7, merge_rounds=2, relation_attempts=3)
     assert run.paper_ids == (1, 2)
-    assert run.merge_attempts == 1
+    assert run.grouping_attempts == 2
+    assert run.groups == 4
+    assert run.merge_calls == 7
+    assert run.merge_rounds == 2
     assert run.relation_attempts == 3
 
 
-@pytest.mark.parametrize("attempts", [{"merge_attempts": 0}, {"relation_attempts": 0}])
-def test_a_run_of_a_stage_that_never_ran_is_rejected(attempts: dict[str, int]) -> None:
-    counts = {"merge_attempts": 1, "relation_attempts": 1} | attempts
+def test_a_run_that_grouped_nothing_and_called_the_merge_stage_never_is_accepted() -> None:
+    run = build_run(groups=0, merge_calls=0)
+    assert run.groups == 0
+    assert run.merge_calls == 0
+
+
+@pytest.mark.parametrize(
+    "counts", [{"grouping_attempts": 0}, {"merge_rounds": 0}, {"relation_attempts": 0}, {"groups": -1}]
+)
+def test_a_run_of_a_stage_that_never_ran_is_rejected(counts: dict[str, int]) -> None:
     with pytest.raises(ValidationError):
-        ConceptNormalizationRun(normalization=build_normalization(), paper_ids=(1, 2), **counts)
+        build_run(**counts)
 
 
 def test_the_missing_extractions_error_lists_every_paper() -> None:

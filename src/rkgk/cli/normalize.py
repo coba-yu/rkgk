@@ -1,12 +1,15 @@
 """The `normalize` command, installed as the console script of the same name.
 
-`main` asks Claude twice: first to merge the concepts of every extracted paper into one shared vocabulary, then
-to relate the merged concepts from general knowledge, and it saves the two answers as one normalization under
-the data directory.
+`main` embeds the concepts of every extracted paper to find the ones that sit close together, asks Claude once
+to bundle them into merge candidates, asks it once per bundle to merge that bundle, joins the answers in
+Python, and finally asks it once more to relate the merged concepts from general knowledge; the result is saved
+as one normalization under the data directory.
 Each stage is validated and retried on its own, so `attempts` reports a count per stage and a rejection reports
 the `stage` it comes from.
 The command takes no paper id because normalization is one cross-paper step: it reads the whole index and fails
 when any paper of it has not been extracted yet.
+The embedder is loaded here, so the command runs under `uv run --extra embedding` unless `--embedder fake` is
+given.
 """
 
 import argparse
@@ -15,6 +18,7 @@ from pathlib import Path
 
 from rkgk.cli._shared import EXIT_ERROR, EXIT_INVALID, EXIT_OK, print_json
 from rkgk.domain.agents import StructuredOutputAgentError
+from rkgk.domain.embedders import Embedder, EmbedderError
 from rkgk.domain.models.concept_normalization import (
     ConceptNormalization,
     ConceptNormalizationIssue,
@@ -24,17 +28,31 @@ from rkgk.domain.models.concept_normalization import (
 from rkgk.domain.repositories.concept_normalization import ConceptNormalizationRepositoryError
 from rkgk.domain.repositories.paper import PaperRepositoryError
 from rkgk.domain.repositories.paper_extraction import PaperExtractionRepositoryError
+from rkgk.domain.services.concept_candidates import DEFAULT_NEIGHBORS
 from rkgk.infrastructure.claude_code_agent import ClaudeCodeAgent
+from rkgk.infrastructure.fake_embedder import FakeEmbedder
 from rkgk.infrastructure.file_concept_normalization_repository import FileConceptNormalizationRepository
 from rkgk.infrastructure.file_paper_extraction_repository import FilePaperExtractionRepository
 from rkgk.infrastructure.file_paper_repository import FilePaperRepository
-from rkgk.usecase.normalize_concepts import NormalizeConceptsUseCase
+from rkgk.infrastructure.qwen3_embedder import DEFAULT_MODEL_NAME, Qwen3Embedder
+from rkgk.usecase.normalize_concepts import DEFAULT_CONCURRENCY, NormalizeConceptsUseCase
 
 NAME = "normalize"
-HELP = "merge the concepts of every extracted paper with Claude, then relate them from general knowledge"
+HELP = (
+    "group the concepts of every extracted paper by their embeddings, merge each group with Claude, "
+    "then relate the merged concepts from general knowledge"
+)
 
 DEFAULT_DATA_DIR = Path("data")
 DEFAULT_MAX_ATTEMPTS = 3
+QWEN3_EMBEDDER = "qwen3"
+FAKE_EMBEDDER = "fake"
+
+
+def _build_embedder(args: argparse.Namespace) -> Embedder:
+    if args.embedder == FAKE_EMBEDDER:
+        return FakeEmbedder()
+    return Qwen3Embedder(model_name=args.embedding_model)
 
 
 def _run(args: argparse.Namespace) -> int:
@@ -43,8 +61,11 @@ def _run(args: argparse.Namespace) -> int:
         FilePaperRepository(args.data_dir),
         FilePaperExtractionRepository(args.data_dir),
         ClaudeCodeAgent(model=args.model),
+        _build_embedder(args),
         normalization_repository,
         max_attempts=args.max_attempts,
+        neighbors=args.neighbors,
+        concurrency=args.concurrency,
     )
     try:
         result = use_case.execute()
@@ -64,6 +85,7 @@ def _run(args: argparse.Namespace) -> int:
         PaperRepositoryError,
         PaperExtractionRepositoryError,
         ConceptNormalizationRepositoryError,
+        EmbedderError,
         # An index without papers is a state of the data directory, not a bug, so it is reported like the rest.
         ValueError,
     ) as error:
@@ -71,7 +93,13 @@ def _run(args: argparse.Namespace) -> int:
         return EXIT_ERROR
     payload: dict[str, object] = {"status": "ok", "papers": len(result.paper_ids)}
     payload.update(_render_result(result.normalization))
-    payload["attempts"] = {"merge": result.merge_attempts, "relations": result.relation_attempts}
+    payload["groups"] = result.groups
+    payload["attempts"] = {
+        "grouping": result.grouping_attempts,
+        "merge_calls": result.merge_calls,
+        "merge_rounds": result.merge_rounds,
+        "relations": result.relation_attempts,
+    }
     payload["paths"] = [str(path) for path in normalization_repository.paths()]
     print_json(payload)
     return EXIT_OK
@@ -98,6 +126,29 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR)
     parser.add_argument("--model", default=None, help="model passed to the Claude CLI; its default is used when unset")
+    parser.add_argument(
+        "--embedder",
+        choices=[QWEN3_EMBEDDER, FAKE_EMBEDDER],
+        default=QWEN3_EMBEDDER,
+        help="fake derives vectors from a hash of the text, which checks the wiring without loading a model",
+    )
+    parser.add_argument(
+        "--embedding-model",
+        default=DEFAULT_MODEL_NAME,
+        help="model the qwen3 embedder loads; ignored by the fake embedder",
+    )
+    parser.add_argument(
+        "--neighbors",
+        type=_positive_int,
+        default=DEFAULT_NEIGHBORS,
+        help="how many close concepts each concept is paired with before the grouping stage sees them",
+    )
+    parser.add_argument(
+        "--concurrency",
+        type=_positive_int,
+        default=DEFAULT_CONCURRENCY,
+        help="how many groups the merge stage asks Claude about at once",
+    )
     parser.add_argument("--max-attempts", type=_positive_int, default=DEFAULT_MAX_ATTEMPTS)
     return parser
 

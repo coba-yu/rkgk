@@ -10,6 +10,8 @@ from rkgk.domain.models.base import SLUG_PATTERN, Entity, Slug
 from rkgk.domain.models.chunk import CHUNK_ID_PATTERN, Chunk
 from rkgk.domain.models.concept_normalization import (
     CONCEPT_NORMALIZATION_SCHEMA_VERSION,
+    CandidatePair,
+    ConceptGrouping,
     ConceptMerge,
     ConceptNormalization,
     ConceptNormalizationIssue,
@@ -18,10 +20,12 @@ from rkgk.domain.models.concept_normalization import (
     ConceptNormalizationValidationError,
     GeneralKnowledgeEdge,
     GeneralKnowledgeRelationProposal,
+    GroupedConcept,
     LocalConceptRef,
     MissingPaperExtractionsError,
     NormalizedConcept,
     PaperStatedRelation,
+    build_concept_grouping_schema,
     build_concept_merge_schema,
     build_concept_normalization_schema,
     build_general_knowledge_relation_proposal_schema,
@@ -93,6 +97,7 @@ from rkgk.domain.models.vocabulary import (
     traversable_concept_types,
     traversable_paper_relations,
 )
+from rkgk.domain.prompts.concept_grouping.builder import build_concept_grouping_prompt
 from rkgk.domain.prompts.concept_merge.builder import build_concept_merge_prompt
 from rkgk.domain.prompts.general_knowledge_relations.builder import build_general_knowledge_relations_prompt
 from rkgk.domain.prompts.paper_extraction.builder import build_paper_extraction_prompt
@@ -126,7 +131,25 @@ from rkgk.domain.repositories.paper_extraction import (
     PaperExtractionRepositoryError,
 )
 from rkgk.domain.services.chunking import DEFAULT_MAX_TOKENS, chunk_paper
+from rkgk.domain.services.concept_candidates import (
+    DEFAULT_NEIGHBORS,
+    build_extracted_concept_embedding_text,
+    collect_candidate_pairs,
+)
+from rkgk.domain.services.concept_merging import (
+    ConceptGroup,
+    build_collision_issues,
+    build_merge_from_groups,
+    collect_groups,
+    collect_solo_concepts,
+    combine_colliding_groups,
+    combine_groups,
+    derive_solo_concept,
+    find_slug_collisions,
+)
 from rkgk.domain.services.concept_normalization import (
+    check_group_merge,
+    check_grouping_against_extractions,
     check_merge_against_extractions,
     check_normalization_against_extractions,
     check_relations_against_concepts,
@@ -136,6 +159,7 @@ from rkgk.domain.services.embedding_items import build_embedding_items, concept_
 from rkgk.domain.services.evidence_resolver import find_chunk, resolve_extraction_evidence
 from rkgk.domain.services.graph_builder import build_knowledge_graph, build_paper_node_id, to_networkx
 from rkgk.domain.services.paper_extraction import check_extraction_against_paper, normalize_whitespace
+from rkgk.domain.services.slugs import derive_slug
 from rkgk.domain.services.traversal import (
     ConceptNeighborhoodTraversal,
     TraversalStrategy,
@@ -152,16 +176,20 @@ __all__ = [
     "CHUNK_ID_PATTERN",
     "CONCEPT_NORMALIZATION_SCHEMA_VERSION",
     "DEFAULT_MAX_TOKENS",
+    "DEFAULT_NEIGHBORS",
     "DOMAIN_MODEL_VERSION",
     "EXTRACTION_SCHEMA_VERSION",
     "INDEX_SCHEMA_VERSION",
     "LOCAL_CONCEPT_ID_PATTERN",
     "MARKER_PATTERN",
     "SLUG_PATTERN",
+    "CandidatePair",
     "Chunk",
     "ChunkEvidence",
     "Concept",
     "ConceptEdge",
+    "ConceptGroup",
+    "ConceptGrouping",
     "ConceptHop",
     "ConceptMerge",
     "ConceptNeighborhoodTraversal",
@@ -192,6 +220,7 @@ __all__ = [
     "ExtractedPaperConceptEdge",
     "GeneralKnowledgeEdge",
     "GeneralKnowledgeRelationProposal",
+    "GroupedConcept",
     "IndexArtifactInvalidError",
     "IndexArtifactUnreadableError",
     "IndexBuildRun",
@@ -247,10 +276,15 @@ __all__ = [
     "TraversalPath",
     "TraversalStrategy",
     "UnresolvedEvidence",
+    "build_collision_issues",
+    "build_concept_grouping_prompt",
+    "build_concept_grouping_schema",
     "build_concept_merge_prompt",
     "build_concept_merge_schema",
     "build_concept_normalization_schema",
     "build_embedding_items",
+    "build_extracted_concept_embedding_text",
+    "build_merge_from_groups",
     "build_general_knowledge_relation_proposal_schema",
     "build_general_knowledge_relations_prompt",
     "build_knowledge_graph",
@@ -258,15 +292,25 @@ __all__ = [
     "build_paper_extraction_prompt",
     "build_paper_extraction_schema",
     "check_extraction_against_paper",
+    "check_group_merge",
+    "check_grouping_against_extractions",
     "check_merge_against_extractions",
     "check_normalization_against_extractions",
     "check_relations_against_concepts",
     "chunk_paper",
+    "collect_candidate_pairs",
+    "collect_groups",
     "collect_paper_stated_relations",
+    "collect_solo_concepts",
+    "combine_colliding_groups",
+    "combine_groups",
     "compute_cosine_scores",
     "concept_embedding_text",
+    "derive_slug",
+    "derive_solo_concept",
     "describe_vocabulary",
     "find_chunk",
+    "find_slug_collisions",
     "format_error_path",
     "normalize_whitespace",
     "build_paper_node_id",

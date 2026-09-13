@@ -6,9 +6,10 @@ a slug and records every spelling it was merged from in `aliases`.
 The agent also proposes concept-to-concept relations from general knowledge, which carry a rationale instead of
 evidence because no single paper backs them; the relations the papers themselves state are handed to that stage
 as `PaperStatedRelation` so it does not propose them a second time.
-The two jobs are asked for one at a time: `ConceptMerge` is what the agent answers about the merge and
-`GeneralKnowledgeRelationProposal` what it answers about the relations, while `ConceptNormalization` is the artifact
-assembled from both and the only one of the three that is stored.
+The merge is not asked for in one call: `CandidatePair` carries what the embeddings found, `ConceptGrouping` is
+what the agent answers when it only bundles the concepts that may be the same, and `ConceptMerge` is what it
+answers for one such bundle; `GeneralKnowledgeRelationProposal` is what it answers about the relations, while
+`ConceptNormalization` is the artifact assembled from the merge and the relations and the only one that is stored.
 """
 
 from typing import Literal, Self
@@ -16,13 +17,14 @@ from typing import Literal, Self
 from pydantic import Field, field_validator, model_validator
 
 from rkgk.domain.models.base import Entity, Slug
-from rkgk.domain.models.paper_extraction import LocalConceptId
+from rkgk.domain.models.paper_extraction import ExtractedConcept, LocalConceptId
 from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType
 
 CONCEPT_NORMALIZATION_SCHEMA_VERSION = 1
 
-# The two agent calls normalization is made of, named so a rejection can say which one it came from.
-ConceptNormalizationStage = Literal["merge", "relations"]
+# The agent calls normalization is made of, named so a rejection can say which one it came from; the grouping and
+# the merge are one name each even though the merge is asked once per group.
+ConceptNormalizationStage = Literal["grouping", "merge", "relations"]
 
 
 class LocalConceptRef(Entity):
@@ -30,6 +32,52 @@ class LocalConceptRef(Entity):
 
     paper_id: int = Field(ge=1)
     local_id: LocalConceptId
+
+
+class CandidatePair(Entity):
+    """Two extracted concepts whose embeddings sit close together, offered to the grouping stage as a hint.
+
+    `score` is the cosine of the two texts and is never a threshold: the agent decides, and it is told that a
+    high score can still be two different concepts and a low one can still be the same concept.
+    """
+
+    left: LocalConceptRef
+    right: LocalConceptRef
+    score: float
+
+
+class ConceptGrouping(Entity):
+    """What the agent answers when it is asked only to bundle the concepts that may turn out to be the same.
+
+    No group at all is a valid answer: a corpus in which nothing is extracted twice merges nothing.
+    """
+
+    groups: tuple[tuple[LocalConceptRef, ...], ...] = ()
+
+    @model_validator(mode="after")
+    def _check_groups(self) -> Self:
+        """Keep the groups apart: a group of one merges nothing, and a concept in two groups is merged twice."""
+        seen: set[tuple[int, str]] = set()
+        for index, group in enumerate(self.groups):
+            if len(group) < 2:
+                raise ValueError(f"groups[{index}] holds {len(group)} concepts, a group needs at least 2")
+            for ref in group:
+                key = (ref.paper_id, ref.local_id)
+                if key in seen:
+                    raise ValueError(f"groups puts paper {ref.paper_id} {ref.local_id!r} in more than one group")
+                seen.add(key)
+        return self
+
+
+class GroupedConcept(Entity):
+    """One extracted concept as the merge stage sees it: the paper it came from next to the concept itself.
+
+    The merge is asked about a group rather than about a paper, so the paper travels with each concept instead
+    of being the heading its concepts sit under.
+    """
+
+    paper_id: int = Field(ge=1)
+    concept: ExtractedConcept
 
 
 class NormalizedConcept(Entity):
@@ -120,8 +168,10 @@ def _reject_repeated_edges(edges: tuple[GeneralKnowledgeEdge, ...]) -> None:
 
 
 class ConceptMerge(Entity):
-    """What the agent answers when it is asked only to merge the extracted concepts.
+    """What the agent answers when it is asked to merge one group of extracted concepts.
 
+    A group may hold concepts that only looked alike, so the answer is a sequence: the same model carries the
+    result of one group and, once the groups are joined, the whole merge.
     No `schema_version`, because this is one stage's answer on its way to `ConceptNormalization` and is never
     written to the data directory.
     """
@@ -178,7 +228,7 @@ class ConceptNormalizationIssue(Entity):
 class ConceptNormalizationValidationError(Exception):
     """Raised when an answer does not fit the schema or does not match what the stage before it produced.
 
-    `stage` says which of the two agent calls was rejected, so a caller can report where normalization stopped
+    `stage` says which of the agent calls was rejected, so a caller can report where normalization stopped
     instead of leaving the reader to guess it from the paths of the issues.
     """
 
@@ -202,6 +252,11 @@ def build_concept_normalization_schema() -> dict[str, object]:
     return ConceptNormalization.model_json_schema()
 
 
+def build_concept_grouping_schema() -> dict[str, object]:
+    """Render the schema the grouping stage must follow; it is generated so the prompt cannot drift."""
+    return ConceptGrouping.model_json_schema()
+
+
 def build_concept_merge_schema() -> dict[str, object]:
     """Render the schema the merge stage must follow; it is generated so the prompt cannot drift from the model."""
     return ConceptMerge.model_json_schema()
@@ -213,9 +268,18 @@ def build_general_knowledge_relation_proposal_schema() -> dict[str, object]:
 
 
 class ConceptNormalizationRun(Entity):
-    """What one normalization run produced, with the papers it covered and the attempts each stage took."""
+    """What one normalization run produced, with the papers it covered and what each stage cost.
+
+    The merge is asked once per group rather than once per run, so it is counted as calls and as rounds instead
+    of as attempts: `merge_calls` is every call the groups took together, retries and collision recovery
+    included, and `merge_rounds` is how often the groups had to be answered for after a slug collision joined
+    two of them.
+    """
 
     normalization: ConceptNormalization
-    merge_attempts: int = Field(ge=1)
+    grouping_attempts: int = Field(ge=1)
+    groups: int = Field(ge=0)
+    merge_calls: int = Field(ge=0)
+    merge_rounds: int = Field(ge=1)
     relation_attempts: int = Field(ge=1)
     paper_ids: tuple[int, ...]
