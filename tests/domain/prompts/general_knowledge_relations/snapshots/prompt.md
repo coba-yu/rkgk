@@ -42,6 +42,7 @@
 - 一覧にない概念を追加しない。
 - `source_id` と `target_id` には異なる slug を書く。
 - 同じ `source_id`、`target_id`、`relation` の組を繰り返さない。
+- 論文が述べた関係として列挙された組は提案しない。
 
 # Concepts
 
@@ -51,3 +52,11 @@
 - retrieval-augmented-generation | Retrieval-Augmented Generation | method | aliases: RAG, 検索拡張生成 | Generation grounded in retrieved passages.
 - page-aligned-chunking | Page-Aligned Chunking | method
 - knowledge-graph | Knowledge Graph | method | aliases: KG | A graph of concepts and their relations.
+
+# Paper-stated relations
+
+以下は論文が本文で述べた関係で、構築時に論文由来の辺としてグラフに載るため、同じ `source_id`、`target_id`、`relation` の組は提案しない。
+関係の行は `- source_id | relation | target_id` という形式で、論文が述べた関係が 1 つもない場合は「なし」とだけ書く。
+
+- page-aligned-chunking | part_of | retrieval-augmented-generation
+- knowledge-graph | used_for | retrieval-augmented-generation

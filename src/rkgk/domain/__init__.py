@@ -21,6 +21,7 @@ from rkgk.domain.models.concept_normalization import (
     LocalConceptRef,
     MissingPaperExtractionsError,
     NormalizedConcept,
+    PaperStatedRelation,
     build_concept_merge_schema,
     build_concept_normalization_schema,
     build_general_knowledge_relation_proposal_schema,
@@ -129,6 +130,7 @@ from rkgk.domain.services.concept_normalization import (
     check_merge_against_extractions,
     check_normalization_against_extractions,
     check_relations_against_concepts,
+    collect_paper_stated_relations,
 )
 from rkgk.domain.services.embedding_items import build_embedding_items, concept_embedding_text
 from rkgk.domain.services.evidence_resolver import find_chunk, resolve_extraction_evidence
@@ -233,6 +235,7 @@ __all__ = [
     "PaperPreprocessInfo",
     "PaperRepository",
     "PaperRepositoryError",
+    "PaperStatedRelation",
     "RelationSpec",
     "SearchConfig",
     "EmbeddedItemHit",
@@ -259,6 +262,7 @@ __all__ = [
     "check_normalization_against_extractions",
     "check_relations_against_concepts",
     "chunk_paper",
+    "collect_paper_stated_relations",
     "compute_cosine_scores",
     "concept_embedding_text",
     "describe_vocabulary",

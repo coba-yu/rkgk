@@ -4,7 +4,8 @@ Extraction reports concepts per paper with ids that mean nothing outside that pa
 once per paper under a different local id; this step merges those local concepts into global ones identified by
 a slug and records every spelling it was merged from in `aliases`.
 The agent also proposes concept-to-concept relations from general knowledge, which carry a rationale instead of
-evidence because no single paper backs them.
+evidence because no single paper backs them; the relations the papers themselves state are handed to that stage
+as `PaperStatedRelation` so it does not propose them a second time.
 The two jobs are asked for one at a time: `ConceptMerge` is what the agent answers about the merge and
 `GeneralKnowledgeRelationProposal` what it answers about the relations, while `ConceptNormalization` is the artifact
 assembled from both and the only one of the three that is stored.
@@ -40,6 +41,19 @@ class NormalizedConcept(Entity):
     aliases: tuple[str, ...] = ()
     description: str = ""
     merged_from: tuple[LocalConceptRef, ...] = Field(min_length=1)
+
+
+class PaperStatedRelation(Entity):
+    """A relation a paper states in its own text, written in the slug the merge gave each of its two ends.
+
+    Handed to the relation stage as what is already known, so general knowledge does not propose again a pair
+    and relation the graph carries from a paper.
+    """
+
+    source_id: Slug
+    target_id: Slug
+    relation: ConceptRelationType
+    paper_ids: tuple[int, ...] = Field(min_length=1)
 
 
 class GeneralKnowledgeEdge(Entity):

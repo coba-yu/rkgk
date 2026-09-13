@@ -17,6 +17,7 @@ from rkgk.domain.models.concept_normalization import (
     LocalConceptRef,
     MissingPaperExtractionsError,
     NormalizedConcept,
+    PaperStatedRelation,
     build_concept_merge_schema,
     build_concept_normalization_schema,
     build_general_knowledge_relation_proposal_schema,
@@ -191,6 +192,38 @@ def test_a_proposal_that_repeats_a_pair_and_relation_is_rejected() -> None:
 def test_a_proposal_on_a_slug_no_concept_declares_is_left_to_the_service() -> None:
     edge = PART_OF.model_copy(update={"target_id": "dense-retrieval"})
     assert GeneralKnowledgeRelationProposal(concept_relations=(edge,)).concept_relations == (edge,)
+
+
+def test_a_paper_stated_relation_keeps_the_slugs_the_relation_joins_and_every_paper_that_states_it() -> None:
+    relation = PaperStatedRelation(
+        source_id="page-aligned-chunking",
+        target_id="retrieval-augmented-generation",
+        relation=ConceptRelationType.PART_OF,
+        paper_ids=(1, 3),
+    )
+    assert relation.source_id == "page-aligned-chunking"
+    assert relation.relation == ConceptRelationType.PART_OF
+    assert relation.paper_ids == (1, 3)
+
+
+def test_a_paper_stated_relation_that_no_paper_states_is_rejected() -> None:
+    with pytest.raises(ValidationError):
+        PaperStatedRelation(
+            source_id="page-aligned-chunking",
+            target_id="retrieval-augmented-generation",
+            relation=ConceptRelationType.PART_OF,
+            paper_ids=(),
+        )
+
+
+def test_a_paper_stated_relation_on_a_slug_outside_the_pattern_is_rejected() -> None:
+    with pytest.raises(ValidationError):
+        PaperStatedRelation(
+            source_id="Page Aligned Chunking",
+            target_id="retrieval-augmented-generation",
+            relation=ConceptRelationType.PART_OF,
+            paper_ids=(1,),
+        )
 
 
 def test_the_schema_describes_the_provenance_and_the_slug_pattern() -> None:

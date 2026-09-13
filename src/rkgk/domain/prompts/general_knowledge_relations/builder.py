@@ -2,13 +2,17 @@
 
 The prose that is only this prompt's lives in the .md files next to this module, and the sections the
 prompts share in ../vocabulary.py and ../retry.py; this module assembles them and loops over the concepts.
-Only the merged concepts are shown: what the papers stated about them is left out so the agent answers from
-general knowledge and cannot copy an edge a paper already carries.
+The merged concepts are shown with the relations the papers state between them, and nothing else of the papers,
+so the agent answers from general knowledge and leaves out the relations the graph already carries.
 """
 
 from pathlib import Path
 
-from rkgk.domain.models.concept_normalization import ConceptNormalizationIssue, NormalizedConcept
+from rkgk.domain.models.concept_normalization import (
+    ConceptNormalizationIssue,
+    NormalizedConcept,
+    PaperStatedRelation,
+)
 from rkgk.domain.prompts.retry import build_retry_section
 from rkgk.domain.prompts.vocabulary import build_vocabulary_section
 
@@ -42,12 +46,35 @@ _CONCEPTS_HEADING = (
 )
 
 
+def _describe_paper_relations(paper_relations: tuple[PaperStatedRelation, ...]) -> list[str]:
+    # Never an empty list: a section with a heading and nothing under it reads as a section the prompt forgot
+    # to fill in rather than as papers that state no relation at all.
+    if not paper_relations:
+        return ["なし"]
+    return [
+        f"- {relation.source_id} | {relation.relation.value} | {relation.target_id}" for relation in paper_relations
+    ]
+
+
+# The second sentence spells out the line format `_describe_paper_relations` writes, so the two sit in one module
+# and cannot be changed apart.
+_PAPER_RELATIONS_HEADING = (
+    "# Paper-stated relations",
+    "",
+    "以下は論文が本文で述べた関係で、構築時に論文由来の辺としてグラフに載るため、同じ `source_id`、`target_id`、"
+    "`relation` の組は提案しない。",
+    "関係の行は `- source_id | relation | target_id` という形式で、論文が述べた関係が 1 つもない場合は"
+    "「なし」とだけ書く。",
+)
+
+
 def build_general_knowledge_relations_prompt(
     concepts: tuple[NormalizedConcept, ...],
+    paper_relations: tuple[PaperStatedRelation, ...],
     previous: object | None = None,
     issues: tuple[ConceptNormalizationIssue, ...] = (),
 ) -> str:
-    """Write the instructions and the merged concepts an agent needs to relate them from general knowledge.
+    """Write the instructions, the merged concepts and the stated relations an agent needs to relate the rest.
 
     A retry gets the rejected JSON and the issues appended, so the agent corrects its own answer instead of
     starting over and losing the parts that were already right.
@@ -62,6 +89,10 @@ def build_general_knowledge_relations_prompt(
         *_CONCEPTS_HEADING,
         "",
         *_describe_concepts(concepts),
+        "",
+        *_PAPER_RELATIONS_HEADING,
+        "",
+        *_describe_paper_relations(paper_relations),
     ]
     if previous is not None:
         lines += build_retry_section(previous, issues)

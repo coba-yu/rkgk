@@ -6,3 +6,4 @@
 - 一覧にない概念を追加しない。
 - `source_id` と `target_id` には異なる slug を書く。
 - 同じ `source_id`、`target_id`、`relation` の組を繰り返さない。
+- 論文が述べた関係として列挙された組は提案しない。

@@ -3,7 +3,7 @@
 An extraction speaks in ids that are local to one paper, and a normalization says which of those local concepts
 became which global slug, so neither artifact is a graph on its own.
 This module replaces every local id by its slug, attaches the chunk evidence to every edge, and appends the
-relations the normalization added from general knowledge.
+relations the normalization added from general knowledge that no paper states already.
 It reads the extraction, normalization and graph models and owns no data.
 """
 
@@ -128,6 +128,7 @@ def build_knowledge_graph(
         )
         for (source_id, target_id, relation, paper_id), evidence in concept_edges.items()
     ]
+    stated_by_a_paper = {(source_id, target_id, relation) for source_id, target_id, relation, _ in concept_edges}
     concept_relations.extend(
         ConceptEdge(
             source_id=edge.source_id,
@@ -137,6 +138,11 @@ def build_knowledge_graph(
             rationale=edge.rationale,
         )
         for edge in normalization.concept_relations
+        # A relation a paper stated is already in the graph with its quotes, and laying the same relation over it
+        # as an edge with no evidence would let traversal walk that one path twice, inflating a search that ranks
+        # candidates by how many paths reach them. Normalization rejects such a proposal too, but a hand-edited or
+        # an older artifact never went through that check, so drop it here as well.
+        if (edge.source_id, edge.target_id, edge.relation) not in stated_by_a_paper
     )
 
     return KnowledgeGraph(

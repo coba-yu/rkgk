@@ -5,8 +5,13 @@ from rkgk.domain.models.concept_normalization import (
     ConceptNormalizationValidationError,
     MissingPaperExtractionsError,
 )
-from rkgk.domain.models.paper_extraction import ExtractedConcept, PaperExtraction
-from rkgk.domain.models.vocabulary import ConceptType
+from rkgk.domain.models.paper_extraction import (
+    ExtractedConcept,
+    ExtractedConceptEdge,
+    PageEvidence,
+    PaperExtraction,
+)
+from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType
 from rkgk.usecase.normalize_concepts import NormalizeConceptsUseCase
 from tests.usecase.fakes import (
     FakeConceptNormalizationRepository,
@@ -62,6 +67,57 @@ VALID_RELATIONS = {
             "target_id": "retrieval-augmented-generation",
             "relation": "used_for",
             "rationale": "A knowledge graph supplies the structure the pipeline walks.",
+        }
+    ]
+}
+
+# Paper 1 states with its own local ids the relation `VALID_RELATIONS` proposes between the merged slugs.
+STATING_EXTRACTIONS = (
+    PaperExtraction(
+        schema_version=1,
+        paper_id=1,
+        summary_ja="この論文は知識グラフを使う検索の手法を提案する。",
+        concepts=(
+            ExtractedConcept(local_id="c1", name="Retrieval-Augmented Generation", type=ConceptType.METHOD),
+            ExtractedConcept(local_id="c2", name="Knowledge Graph", type=ConceptType.METHOD),
+        ),
+        paper_concepts=(),
+        concept_relations=(
+            ExtractedConceptEdge(
+                source_id="c2",
+                target_id="c1",
+                relation=ConceptRelationType.USED_FOR,
+                evidence=(PageEvidence(page=1, quote="We use a knowledge graph as a retrieval backbone."),),
+            ),
+        ),
+    ),
+    build_extraction(2, "Knowledge Graph"),
+)
+
+STATING_MERGE = {
+    "concepts": [
+        {
+            "id": "retrieval-augmented-generation",
+            "canonical_name": "Retrieval-Augmented Generation",
+            "type": "method",
+            "merged_from": [{"paper_id": 1, "local_id": "c1"}],
+        },
+        {
+            "id": "knowledge-graph",
+            "canonical_name": "Knowledge Graph",
+            "type": "method",
+            "merged_from": [{"paper_id": 1, "local_id": "c2"}, {"paper_id": 2, "local_id": "c1"}],
+        },
+    ]
+}
+
+GENERAL_RELATIONS = {
+    "concept_relations": [
+        {
+            "source_id": "retrieval-augmented-generation",
+            "target_id": "knowledge-graph",
+            "relation": "related_to",
+            "rationale": "Both organise the passages an answer is grounded in.",
         }
     ]
 }
@@ -143,6 +199,38 @@ def test_the_relation_prompt_lists_the_slugs_the_merge_settled_on_and_no_paper()
     assert "- retrieval-augmented-generation | Retrieval-Augmented Generation | method" in agent.prompts[1]
     assert "- knowledge-graph | Knowledge Graph | method" in agent.prompts[1]
     assert '<paper id="1">' not in agent.prompts[1]
+
+
+def test_the_relation_prompt_lists_the_relations_the_papers_state_in_the_slugs_of_the_merge() -> None:
+    agent = FakeAgent(STATING_MERGE, GENERAL_RELATIONS)
+    build_use_case(agent, FakeConceptNormalizationRepository(), extractions=STATING_EXTRACTIONS).execute()
+    assert "# Paper-stated relations" in agent.prompts[1]
+    assert "- knowledge-graph | used_for | retrieval-augmented-generation" in agent.prompts[1]
+
+
+def test_the_relation_prompt_says_none_when_no_paper_states_a_relation() -> None:
+    agent = FakeAgent(VALID_MERGE, VALID_RELATIONS)
+    build_use_case(agent, FakeConceptNormalizationRepository()).execute()
+    assert agent.prompts[1].endswith("なし\n")
+
+
+def test_a_relation_the_papers_already_state_is_retried_until_general_knowledge_adds_something() -> None:
+    agent = FakeAgent(STATING_MERGE, VALID_RELATIONS, GENERAL_RELATIONS)
+    saved = FakeConceptNormalizationRepository()
+    result = build_use_case(agent, saved, extractions=STATING_EXTRACTIONS).execute()
+    assert result.merge_attempts == 1
+    assert result.relation_attempts == 2
+    assert [edge.relation.value for edge in result.normalization.concept_relations] == ["related_to"]
+    assert saved.saved == [result.normalization]
+
+
+def test_the_retry_after_a_repeated_relation_names_the_paper_that_states_it() -> None:
+    agent = FakeAgent(STATING_MERGE, VALID_RELATIONS, GENERAL_RELATIONS)
+    build_use_case(agent, FakeConceptNormalizationRepository(), extractions=STATING_EXTRACTIONS).execute()
+    assert (
+        "- concept_relations[0]: repeats what paper 1 states: knowledge-graph used_for "
+        "retrieval-augmented-generation" in agent.prompts[2]
+    )
 
 
 def test_a_merge_that_drops_a_concept_is_retried_and_only_its_own_attempts_are_counted() -> None:

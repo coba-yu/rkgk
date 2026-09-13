@@ -211,6 +211,51 @@ def test_a_relation_of_general_knowledge_keeps_its_origin_and_rationale() -> Non
     assert edge.rationale == "検索拡張生成は幻覚を減らすために使われる。"
 
 
+def build_with_general_knowledge(*edges: GeneralKnowledgeEdge) -> KnowledgeGraph:
+    """Build the same two papers as build(), with the general knowledge relations of the test in place."""
+    normalization = ConceptNormalization(schema_version=1, concepts=NORMALIZATION.concepts, concept_relations=edges)
+    return build_knowledge_graph((EXTRACTION_1, EXTRACTION_2), normalization, CHUNK_EVIDENCE)
+
+
+def test_a_general_knowledge_relation_a_paper_already_states_is_not_added() -> None:
+    graph = build_with_general_knowledge(
+        GeneralKnowledgeEdge(
+            source_id="graph-rag",
+            target_id="retrieval-augmented-generation",
+            relation=ConceptRelationType.IS_A,
+            rationale="Graph RAG は検索拡張生成の一種である。",
+        )
+    )
+
+    assert [(edge.source_id, edge.target_id, edge.relation, edge.origin) for edge in graph.concept_relations] == [
+        ("graph-rag", "hallucination", ConceptRelationType.USED_FOR, Origin.PAPER),
+        ("graph-rag", "retrieval-augmented-generation", ConceptRelationType.IS_A, Origin.PAPER),
+    ]
+
+
+def test_a_general_knowledge_relation_of_another_type_or_direction_is_kept() -> None:
+    graph = build_with_general_knowledge(
+        GeneralKnowledgeEdge(
+            source_id="graph-rag",
+            target_id="retrieval-augmented-generation",
+            relation=ConceptRelationType.PART_OF,
+            rationale="Graph RAG は検索拡張生成の構成要素として使われる。",
+        ),
+        GeneralKnowledgeEdge(
+            source_id="retrieval-augmented-generation",
+            target_id="graph-rag",
+            relation=ConceptRelationType.IS_A,
+            rationale="向きが逆の関係も別の主張である。",
+        ),
+    )
+
+    general_knowledge = [edge for edge in graph.concept_relations if edge.origin == Origin.GENERAL_KNOWLEDGE]
+    assert [(edge.source_id, edge.target_id, edge.relation) for edge in general_knowledge] == [
+        ("graph-rag", "retrieval-augmented-generation", ConceptRelationType.PART_OF),
+        ("retrieval-augmented-generation", "graph-rag", ConceptRelationType.IS_A),
+    ]
+
+
 def test_paper_count_counts_the_distinct_papers_a_concept_was_merged_from() -> None:
     counts = {concept.id: concept.paper_count for concept in build().concepts}
 
@@ -316,6 +361,37 @@ def test_a_concept_relation_whose_two_ends_merged_into_one_slug_is_dropped() -> 
     graph = build_knowledge_graph((extraction,), MERGED_NORMALIZATION, {3: resolve(3, MERGED_RELATION_FIRST)})
 
     assert graph.concept_relations == ()
+
+
+def test_a_relation_dropped_because_its_ends_merged_keeps_the_general_knowledge_relation() -> None:
+    extraction = build_merged_extraction(
+        concept_relations=(
+            ExtractedConceptEdge(
+                source_id="c1",
+                target_id="c2",
+                relation=ConceptRelationType.RELATED_TO,
+                evidence=(MERGED_RELATION_FIRST,),
+            ),
+        )
+    )
+    normalization = ConceptNormalization(
+        schema_version=1,
+        concepts=MERGED_NORMALIZATION.concepts,
+        concept_relations=(
+            GeneralKnowledgeEdge(
+                source_id="graph-rag",
+                target_id="hallucination",
+                relation=ConceptRelationType.RELATED_TO,
+                rationale="Graph RAG は幻覚と関わりがある。",
+            ),
+        ),
+    )
+
+    graph = build_knowledge_graph((extraction,), normalization, {3: resolve(3, MERGED_RELATION_FIRST)})
+
+    assert [(edge.source_id, edge.target_id, edge.relation, edge.origin) for edge in graph.concept_relations] == [
+        ("graph-rag", "hallucination", ConceptRelationType.RELATED_TO, Origin.GENERAL_KNOWLEDGE)
+    ]
 
 
 def test_a_local_id_that_no_normalized_concept_merged_is_rejected() -> None:

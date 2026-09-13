@@ -17,6 +17,7 @@ from rkgk.domain.models.concept_normalization import (
     GeneralKnowledgeRelationProposal,
     MissingPaperExtractionsError,
     NormalizedConcept,
+    PaperStatedRelation,
     build_concept_merge_schema,
     build_general_knowledge_relation_proposal_schema,
 )
@@ -29,6 +30,7 @@ from rkgk.domain.repositories.paper_extraction import PaperExtractionNotFoundErr
 from rkgk.domain.services.concept_normalization import (
     check_merge_against_extractions,
     check_relations_against_concepts,
+    collect_paper_stated_relations,
 )
 from rkgk.domain.services.validation import format_error_path
 
@@ -67,7 +69,10 @@ class NormalizeConceptsUseCase:
             raise ValueError("no papers in the index")
         extractions = self._collect_extractions(paper_ids)
         merge, merge_attempts = self._merge_concepts(extractions)
-        proposal, relation_attempts = self._propose_relations(merge.concepts)
+        # Only the accepted merge maps the local ids onto slugs, so what the papers state can be written in the
+        # vocabulary of the relation stage only once the merge is through.
+        paper_relations = collect_paper_stated_relations(merge.concepts, extractions)
+        proposal, relation_attempts = self._propose_relations(merge.concepts, paper_relations)
         normalization = ConceptNormalization(
             schema_version=1, concepts=merge.concepts, concept_relations=proposal.concept_relations
         )
@@ -112,7 +117,7 @@ class NormalizeConceptsUseCase:
             return merge, attempts
 
     def _propose_relations(
-        self, concepts: tuple[NormalizedConcept, ...]
+        self, concepts: tuple[NormalizedConcept, ...], paper_relations: tuple[PaperStatedRelation, ...]
     ) -> tuple[GeneralKnowledgeRelationProposal, int]:
         """Ask for the relations between the merged concepts, counting this stage's attempts on their own.
 
@@ -125,9 +130,11 @@ class NormalizeConceptsUseCase:
         issues: tuple[ConceptNormalizationIssue, ...] = ()
         while True:
             attempts += 1
-            payload = self._agent.answer(build_general_knowledge_relations_prompt(concepts, previous, issues), schema)
+            payload = self._agent.answer(
+                build_general_knowledge_relations_prompt(concepts, paper_relations, previous, issues), schema
+            )
             try:
-                proposal = self._validate_proposal(payload, concepts)
+                proposal = self._validate_proposal(payload, concepts, paper_relations)
             except ConceptNormalizationValidationError as error:
                 if attempts >= self._max_attempts:
                     raise
@@ -146,13 +153,16 @@ class NormalizeConceptsUseCase:
         return merge
 
     def _validate_proposal(
-        self, payload: object, concepts: tuple[NormalizedConcept, ...]
+        self,
+        payload: object,
+        concepts: tuple[NormalizedConcept, ...],
+        paper_relations: tuple[PaperStatedRelation, ...],
     ) -> GeneralKnowledgeRelationProposal:
         try:
             proposal = GeneralKnowledgeRelationProposal.model_validate(payload)
         except ValidationError as error:
             raise ConceptNormalizationValidationError("relations", _build_issues(error)) from error
-        issues = check_relations_against_concepts(proposal, concepts)
+        issues = check_relations_against_concepts(proposal, concepts, paper_relations)
         if issues:
             raise ConceptNormalizationValidationError("relations", issues)
         return proposal
