@@ -21,12 +21,12 @@ make lint
 | --- | --- | --- | --- |
 | 前処理 | 別プロジェクト。成果物を S3 から取得する | - | `data/papers/index.json`, `data/papers/NNNN/paper.json`, `data/papers/NNNN/pages/*.md` |
 | 抽出 | `uv run extract <paper_id>` | Claude CLI を呼ぶ | `data/papers/NNNN/extraction.json` |
-| 正規化 | `uv run normalize` | Claude CLI を呼ぶ | `data/normalization/concepts.json`, `data/normalization/concept_relations.json` |
+| 正規化 | `uv run --extra embedding normalize` | 埋め込みモデルを読み、Claude CLI を呼ぶ | `data/normalization/concepts.json`, `data/normalization/concept_relations.json` |
 | 構築 | `uv run --extra embedding build` | 呼ばない | `data/index/manifest.json`, `chunks.jsonl`, `items.jsonl`, `embeddings.npy`, `graph.json` |
 | 検索 | Skill `rkgk-search-papers` から `uv run --extra embedding search` | 呼ばない | 何も書かない（stdout の JSON だけ） |
 
 `extract` と `normalize` は `claude -p` を起動するので、`claude` コマンドがインストールされ、ログイン済みである必要がある。
-`build` と `search` は埋め込みモデル Qwen3（既定は `Qwen/Qwen3-Embedding-0.6B`）を読むので、`uv run --extra embedding` で起動する。
+`normalize`、`build`、`search` は埋め込みモデル Qwen3（既定は `Qwen/Qwen3-Embedding-0.6B`）を読むので、`uv run --extra embedding` で起動する。
 `data/` の完成形の例は `tests/fixtures/pipeline/` にある（論文 3 本分を手で書いたもの）。
 
 ## 利用手順
@@ -77,20 +77,46 @@ Claude が本文を読み、日本語要約、概念、論文と概念の関係�
 ### 3. 正規化する
 
 ```
-uv run normalize
+uv run --extra embedding normalize
 ```
 
 論文単位ではなく `data/papers/index.json` の全論文をまとめて 1 回で処理する。
 未抽出の論文が 1 本でもあると `error` で止まるので、先に全論文の `extract` を終わらせる。
-`claude -p` は 2 回呼ぶ。
-1 回目は統合で、論文ごとにばらけた概念を slug の共通語彙へまとめ、表記ゆれを `aliases` と `merged_from` に残す。
-2 回目は統合後の概念一覧を渡し、どの論文にも書かれていない概念間関係（`is_a` / `part_of` / `used_for` / `related_to`）を、一般知識として `rationale` 付きで提案させる。
+概念の統合は 1 回の `claude -p` では入力が大きすぎて終わらないため、次の 4 段に分けている。
+
+| 段 | 実行者 | 入力 | 出力 |
+| --- | --- | --- | --- |
+| 0 | Python | 各抽出概念の名前・別名・説明 | 埋め込みと、コサイン類似度付きの候補ペア一覧 |
+| 1 | `claude -p` 1 回 | 概念一覧と候補ペア一覧 | 統合候補の群への分割（ローカル id のみ） |
+| 2 | `claude -p` 群ごと（並列） | 群に入った概念の詳細 | 群ごとの正規化概念（1 つの群を複数に分けてよい） |
+| 3 | Python | 全群の正規化概念 | 結合、分割の検証、slug 衝突の検出と回収 |
+
+段 0 の類似度は閾値ではなく、段 1 に渡す判断材料である。
+類似度が高くても別概念、低くても同一概念と判断してよい、と段 1 のプロンプトに書いてある。
+群に入らなかった単独概念には `claude -p` を呼ばず、抽出時の名前・別名・説明をそのまま使い、名前から slug を導いて正規化概念にする。
+段 3 で 2 つ以上の群が同じ slug を出したら衝突とみなし、衝突した群を 1 つに結合して段 2 をやり直す。
+衝突が無くなるまで繰り返し、周回数が `--max-attempts` を超えたら `invalid` で止まる。
+
+最後に、統合後の概念一覧を渡してもう 1 回 `claude -p` を呼び、どの論文にも書かれていない概念間関係（`is_a` / `part_of` / `used_for` / `related_to`）を、一般知識として `rationale` 付きで提案させる。
 このとき、論文が本文で述べた関係も統合後の slug に直して既知の関係として渡し、同じ `source_id`、`target_id`、`relation` の組は提案させない。
 同じ組が提案された場合は関係の段を却下して再試行させ、`build` でも同じ組の一般知識由来の辺はグラフに載せない。
-オプションは `--data-dir`、`--model`、`--max-attempts`（既定 3）。
-`--max-attempts` は段ごとに数えるので、統合で最大 3 回、関係で最大 3 回まで再試行する。
 関係の段が通らなければ、統合が通っていても何も保存しない。
-`ok` の `attempts` は `{"merge": 1, "relations": 2}` のように段ごとの回数を返し、`invalid` は落ちた段を `stage` に入れる。
+
+主なオプションは次のとおりである。
+
+| オプション | 既定 | 意味 |
+| --- | --- | --- |
+| `--data-dir` | `data` | 読み書きするデータディレクトリ |
+| `--model` | Claude CLI の既定 | `claude -p` に渡すモデル |
+| `--embedding-model` | `Qwen/Qwen3-Embedding-0.6B` | 段 0 で読む埋め込みモデル |
+| `--neighbors` | 5 | 段 0 で 1 概念あたり何件の近い概念とペアにするか |
+| `--concurrency` | 4 | 段 2 で同時に投げる群の数 |
+| `--max-attempts` | 3 | 段ごとの再試行の上限、および段 3 の周回数の上限 |
+
+`--max-attempts` は段ごとに数えるので、段 1 で最大 3 回、段 2 は群ごとに最大 3 回、関係の段で最大 3 回まで再試行する。
+`ok` の `attempts` は `{"grouping": 1, "merge_calls": 12, "merge_rounds": 2, "relations": 1}` の形で、`merge_calls` は段 2 の呼び出し総数（再試行と衝突回収を含む）、`merge_rounds` は段 3 の周回数（衝突が無ければ 1）である。
+`ok` にはこのほか `groups`（段 1 が作った群の数）が入る。
+`invalid` は落ちた段を `stage` に入れ、値は `grouping` / `merge` / `relations` のいずれかである。
 
 ### 4. 構築する
 
@@ -137,7 +163,7 @@ aws s3 sync data/ "$RKGK_S3_URI/" --exclude '*.DS_Store'
 | 変更の種類 | やり直す段階 |
 | --- | --- |
 | 抽出 JSON の形式や抽出プロンプトの変更 | 全論文を `extract` → `normalize` → `build` |
-| 表記ゆれの統合や一般知識関係の変更 | `normalize` → `build` |
+| 表記ゆれの統合や一般知識関係の変更 | `uv run --extra embedding normalize` → `build` |
 | 埋め込みモデルやチャンク設定（`--embedding-model`, `--max-tokens`）の変更 | `build` のみ |
 | 論文を 1 本追加 | その論文を `extract` → `normalize` → `build` |
 

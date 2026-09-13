@@ -1,20 +1,46 @@
 """Checks that a normalization really covers the extractions it claims to merge.
 
+The merge is reached in stages, so each stage is checked against what it was shown: the grouping against the
+extractions, one group's merge against that group alone, and the joined merge against the extractions again.
 It also rewrites the relations the extractions state in the slugs of the merge, which is what the relation
 stage is shown and judged against so that general knowledge does not repeat a relation a paper already states.
 This module reads the normalization and extraction models but owns no data of its own.
 """
 
+from collections.abc import Sequence
+
 from rkgk.domain.models.concept_normalization import (
+    ConceptGrouping,
     ConceptMerge,
     ConceptNormalization,
     ConceptNormalizationIssue,
     GeneralKnowledgeRelationProposal,
+    GroupedConcept,
     NormalizedConcept,
     PaperStatedRelation,
 )
 from rkgk.domain.models.paper_extraction import PaperExtraction
 from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType
+
+
+def _describe_missing_ref(paper_id: int, local_id: str, known_papers: set[int]) -> str:
+    """Tell a reference to a concept the paper never extracted apart from one to a paper nobody extracted."""
+    if paper_id in known_papers:
+        return f"paper {paper_id} has no concept {local_id!r}"
+    return f"there is no extraction for paper {paper_id}"
+
+
+def _build_type_issue(
+    index: int, concept_type: ConceptType, source_types: Sequence[ConceptType]
+) -> ConceptNormalizationIssue:
+    """Report a merged concept whose type none of the concepts it was merged from carries."""
+    return ConceptNormalizationIssue(
+        path=f"concepts[{index}].type",
+        message=(
+            f"is {concept_type.value!r}, which none of the merged concepts has; they are "
+            f"{', '.join(sorted({source.value for source in source_types}))}"
+        ),
+    )
 
 
 def _check_concepts_against_extractions(
@@ -39,27 +65,17 @@ def _check_concepts_against_extractions(
             key = (ref.paper_id, ref.local_id)
             source_type = types_by_ref.get(key)
             if source_type is None:
-                problem = (
-                    f"paper {ref.paper_id} has no concept {ref.local_id!r}"
-                    if ref.paper_id in known_papers
-                    else f"there is no extraction for paper {ref.paper_id}"
-                )
                 issues.append(
-                    ConceptNormalizationIssue(path=f"concepts[{index}].merged_from[{position}]", message=problem)
+                    ConceptNormalizationIssue(
+                        path=f"concepts[{index}].merged_from[{position}]",
+                        message=_describe_missing_ref(ref.paper_id, ref.local_id, known_papers),
+                    )
                 )
                 continue
             covered.add(key)
             source_types.append(source_type)
         if source_types and concept.type not in source_types:
-            issues.append(
-                ConceptNormalizationIssue(
-                    path=f"concepts[{index}].type",
-                    message=(
-                        f"is {concept.type.value!r}, which none of the merged concepts has; they are "
-                        f"{', '.join(sorted({source.value for source in source_types}))}"
-                    ),
-                )
-            )
+            issues.append(_build_type_issue(index, concept.type, source_types))
     for extraction in extractions:
         for concept in extraction.concepts:
             if (extraction.paper_id, concept.local_id) not in covered:
@@ -69,6 +85,68 @@ def _check_concepts_against_extractions(
                         message=f"paper {extraction.paper_id} {concept.local_id!r} is in no merged_from",
                     )
                 )
+    return tuple(issues)
+
+
+def check_grouping_against_extractions(
+    grouping: ConceptGrouping, extractions: tuple[PaperExtraction, ...]
+) -> tuple[ConceptNormalizationIssue, ...]:
+    """Report every reference of the grouping that names a paper or a concept the extractions do not hold.
+
+    Nothing else is checked here: that the groups do not overlap and hold at least two concepts is the model's
+    own rule, and a concept left out of every group is the answer the grouping stage is allowed to give.
+    """
+    known_refs = {
+        (extraction.paper_id, concept.local_id) for extraction in extractions for concept in extraction.concepts
+    }
+    known_papers = {extraction.paper_id for extraction in extractions}
+    issues: list[ConceptNormalizationIssue] = []
+    for index, group in enumerate(grouping.groups):
+        for position, ref in enumerate(group):
+            if (ref.paper_id, ref.local_id) not in known_refs:
+                issues.append(
+                    ConceptNormalizationIssue(
+                        path=f"groups[{index}][{position}]",
+                        message=_describe_missing_ref(ref.paper_id, ref.local_id, known_papers),
+                    )
+                )
+    return tuple(issues)
+
+
+def check_group_merge(merge: ConceptMerge, group: Sequence[GroupedConcept]) -> tuple[ConceptNormalizationIssue, ...]:
+    """Report every disagreement between the merge of one group and the concepts that group was made of.
+
+    The group is the whole world of this answer, so a concept from outside it is as wrong as a concept of the
+    group that no `merged_from` holds; a reference two concepts claim is already refused by `ConceptMerge`.
+    """
+    types_by_ref = {(item.paper_id, item.concept.local_id): item.concept.type for item in group}
+    issues: list[ConceptNormalizationIssue] = []
+    covered: set[tuple[int, str]] = set()
+    for index, concept in enumerate(merge.concepts):
+        source_types: list[ConceptType] = []
+        for position, ref in enumerate(concept.merged_from):
+            key = (ref.paper_id, ref.local_id)
+            source_type = types_by_ref.get(key)
+            if source_type is None:
+                issues.append(
+                    ConceptNormalizationIssue(
+                        path=f"concepts[{index}].merged_from[{position}]",
+                        message=f"paper {ref.paper_id} {ref.local_id!r} is not one of the grouped concepts",
+                    )
+                )
+                continue
+            covered.add(key)
+            source_types.append(source_type)
+        if source_types and concept.type not in source_types:
+            issues.append(_build_type_issue(index, concept.type, source_types))
+    for item in group:
+        if (item.paper_id, item.concept.local_id) not in covered:
+            issues.append(
+                ConceptNormalizationIssue(
+                    path="concepts",
+                    message=f"paper {item.paper_id} {item.concept.local_id!r} is in no merged_from",
+                )
+            )
     return tuple(issues)
 
 

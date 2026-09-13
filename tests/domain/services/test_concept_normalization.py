@@ -1,8 +1,10 @@
 from rkgk.domain.models.concept_normalization import (
+    ConceptGrouping,
     ConceptMerge,
     ConceptNormalization,
     GeneralKnowledgeEdge,
     GeneralKnowledgeRelationProposal,
+    GroupedConcept,
     LocalConceptRef,
     NormalizedConcept,
     PaperStatedRelation,
@@ -15,6 +17,8 @@ from rkgk.domain.models.paper_extraction import (
 )
 from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType
 from rkgk.domain.services.concept_normalization import (
+    check_group_merge,
+    check_grouping_against_extractions,
     check_merge_against_extractions,
     check_normalization_against_extractions,
     check_relations_against_concepts,
@@ -299,3 +303,110 @@ def test_a_relation_more_than_one_paper_states_is_reported_with_every_one_of_the
         GeneralKnowledgeRelationProposal(concept_relations=(PART_OF,)), (RAG, CHUNKING, KNOWLEDGE_GRAPH), (stated,)
     )
     assert issues[0].message.startswith("repeats what papers 1, 3 state: ")
+
+
+GROUP = (
+    GroupedConcept(paper_id=1, concept=EXTRACTIONS[0].concepts[0]),
+    GroupedConcept(paper_id=2, concept=EXTRACTIONS[1].concepts[0]),
+)
+
+GROUP_MERGE = ConceptMerge(concepts=(RAG,))
+
+
+def build_grouping(*groups: tuple[tuple[int, str], ...]) -> ConceptGrouping:
+    return ConceptGrouping(
+        groups=tuple(
+            tuple(LocalConceptRef(paper_id=paper_id, local_id=local_id) for paper_id, local_id in group)
+            for group in groups
+        )
+    )
+
+
+def test_a_grouping_of_concepts_the_papers_extracted_is_accepted() -> None:
+    grouping = build_grouping(((1, "c1"), (2, "c1")), ((1, "c2"), (2, "c2")))
+    assert check_grouping_against_extractions(grouping, EXTRACTIONS) == ()
+
+
+def test_a_grouping_without_groups_is_accepted() -> None:
+    assert check_grouping_against_extractions(ConceptGrouping(), EXTRACTIONS) == ()
+
+
+def test_a_group_that_names_a_concept_the_paper_never_extracted_is_reported_with_its_position() -> None:
+    grouping = build_grouping(((1, "c1"), (2, "c1")), ((1, "c2"), (2, "c9")))
+    issues = check_grouping_against_extractions(grouping, EXTRACTIONS)
+    assert [issue.path for issue in issues] == ["groups[1][1]"]
+    assert issues[0].message == "paper 2 has no concept 'c9'"
+
+
+def test_a_group_that_names_a_paper_that_was_not_extracted_is_reported() -> None:
+    grouping = build_grouping(((1, "c1"), (9, "c1")))
+    issues = check_grouping_against_extractions(grouping, EXTRACTIONS)
+    assert [issue.path for issue in issues] == ["groups[0][1]"]
+    assert issues[0].message == "there is no extraction for paper 9"
+
+
+def test_every_unknown_reference_of_a_grouping_is_reported_instead_of_only_the_first() -> None:
+    grouping = build_grouping(((1, "c7"), (9, "c1")))
+    assert [issue.path for issue in check_grouping_against_extractions(grouping, EXTRACTIONS)] == [
+        "groups[0][0]",
+        "groups[0][1]",
+    ]
+
+
+def test_a_group_merge_that_covers_the_whole_group_exactly_once_is_accepted() -> None:
+    assert check_group_merge(GROUP_MERGE, GROUP) == ()
+
+
+def test_a_group_merge_that_splits_the_group_into_two_concepts_is_accepted() -> None:
+    left = RAG.model_copy(update={"merged_from": (LocalConceptRef(paper_id=1, local_id="c1"),)})
+    right = NormalizedConcept(
+        id="rag-the-band",
+        canonical_name="RAG",
+        type=ConceptType.METHOD,
+        merged_from=(LocalConceptRef(paper_id=2, local_id="c1"),),
+    )
+    assert check_group_merge(ConceptMerge(concepts=(left, right)), GROUP) == ()
+
+
+def test_a_group_merge_that_leaves_a_concept_of_the_group_out_is_reported_with_that_concept() -> None:
+    partial = RAG.model_copy(update={"merged_from": (LocalConceptRef(paper_id=1, local_id="c1"),)})
+    issues = check_group_merge(ConceptMerge(concepts=(partial,)), GROUP)
+    assert [issue.path for issue in issues] == ["concepts"]
+    assert issues[0].message == "paper 2 'c1' is in no merged_from"
+
+
+def test_a_group_merge_that_reaches_outside_the_group_is_reported_with_its_path() -> None:
+    outside = RAG.model_copy(
+        update={
+            "merged_from": (
+                LocalConceptRef(paper_id=1, local_id="c1"),
+                LocalConceptRef(paper_id=2, local_id="c1"),
+                LocalConceptRef(paper_id=1, local_id="c2"),
+            )
+        }
+    )
+    issues = check_group_merge(ConceptMerge(concepts=(outside,)), GROUP)
+    assert [issue.path for issue in issues] == ["concepts[0].merged_from[2]"]
+    assert issues[0].message == "paper 1 'c2' is not one of the grouped concepts"
+
+
+def test_a_group_merge_with_a_type_none_of_the_grouped_concepts_has_is_reported_with_its_path() -> None:
+    retyped = RAG.model_copy(update={"type": ConceptType.PROBLEM})
+    issues = check_group_merge(ConceptMerge(concepts=(retyped,)), GROUP)
+    assert [issue.path for issue in issues] == ["concepts[0].type"]
+    assert issues[0].message == "is 'problem', which none of the merged concepts has; they are method"
+
+
+def test_every_issue_of_a_group_merge_is_reported_instead_of_only_the_first() -> None:
+    broken = NormalizedConcept(
+        id="dense-retrieval",
+        canonical_name="Dense Retrieval",
+        type=ConceptType.PROBLEM,
+        merged_from=(LocalConceptRef(paper_id=1, local_id="c1"), LocalConceptRef(paper_id=2, local_id="c2")),
+    )
+    issues = check_group_merge(ConceptMerge(concepts=(broken,)), GROUP)
+    assert [issue.path for issue in issues] == [
+        "concepts[0].merged_from[1]",
+        "concepts[0].type",
+        "concepts",
+    ]

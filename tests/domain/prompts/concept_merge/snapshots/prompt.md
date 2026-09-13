@@ -1,7 +1,8 @@
 # Task
 
-複数の研究論文から抽出された概念を、1 つの共通語彙に統合する。
-以下の概念を読み、そのそれぞれを正規化概念として 1 回だけ報告する。
+以下の概念は、複数の研究論文から抽出されたもののうち、同じ概念を指しているかもしれないものとして束ねられた統合候補である。
+同じものを指す概念を 1 つの正規化概念にまとめ、別の概念と判断したものは別の正規化概念にする。
+以下のすべての概念を、ちょうど 1 つの `merged_from` に入れる。
 与えられた JSON Schema に従う単一の JSON オブジェクトで回答する。
 
 ## Vocabulary
@@ -38,21 +39,15 @@
 - 2 つの概念は同じものを指すときにだけ統合し、意味が同じかどうか判断できない概念は別々の正規化概念として残す。
 - `canonical_name` には概念の英語の正式名称を書き、`id` はそれを小文字にした単語を `-` でつないで導き、`^[a-z0-9]+(-[a-z0-9]+)*$` に一致させる。
 - 統合した概念のすべての表記、略語、日本語名を `aliases` に集める。
-- 抽出されたすべての概念を、抽出元の論文 id と抽出時のローカル id として、ちょうど 1 つの `merged_from` に記載する。
+- `# Concepts` に並ぶすべての概念を、その論文 id と抽出時のローカル id として、ちょうど 1 つの `merged_from` に記載する。
 - `type` は統合した概念が抽出されたときの type のままにする。
-- どの論文も抽出していない概念を追加しない。
+- `# Concepts` に並んでいない概念を追加しない。
 
-# Papers
+# Concepts
 
-論文ごとに個別に抽出したので、`c1`、`c2`、... はそれが記載されている論文の中でのみ通用する。
-概念の行は `- local id | name | type | aliases: ... | description` という形式で、論文が aliases や description を報告していない場合は途中で終わる。
+`paper_id:local_id` は抽出元の論文 id と、その論文の中でのみ通用するローカル id である。
+概念の行は `- paper_id:local_id | name | type | aliases: ... | description` という形式で、論文が aliases や description を報告していない場合は途中で終わる。
 
-<paper id="1">
-- c1 | Retrieval-Augmented Generation | method | aliases: RAG, 検索拡張生成 | Generation grounded in retrieved passages.
-- c2 | Page-Aligned Chunking | method
-</paper>
-
-<paper id="2">
-- c1 | RAG | method
-- c2 | Knowledge Graph | method | aliases: KG | A graph of concepts and their relations.
-</paper>
+- 1:c1 | Retrieval-Augmented Generation | method | aliases: RAG, 検索拡張生成 | Generation grounded in retrieved passages.
+- 2:c1 | RAG | method
+- 2:c2 | Knowledge Graph | method | aliases: KG | A graph of concepts and their relations.
