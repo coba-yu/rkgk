@@ -12,14 +12,10 @@ PR タイトルは Conventional Commits に従う。
 
 <!-- 主な変更点を箇条書きにする。 -->
 
-## Discussions
+## Discussion Points (for HUMAN)
 
 <!-- レビュワー（人間）に判断してほしいポイント -->
 
-## FYI
+## FYI (from AI)
 
 <!-- 実装側（AI）側で判断した共有事項 -->
-
-## 検証
-
-<!-- 実行したコマンドと結果を書く。 -->
