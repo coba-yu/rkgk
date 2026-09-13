@@ -1,7 +1,10 @@
 """The `normalize` command, installed as the console script of the same name.
 
-`main` merges the concepts of every extracted paper with Claude into one shared vocabulary, validates the merge
-against those extractions, retries on failure, and saves the accepted normalization under the data directory.
+`main` asks Claude twice: first to merge the concepts of every extracted paper into one shared vocabulary, then
+to relate the merged concepts from general knowledge, and it saves the two answers as one normalization under
+the data directory.
+Each stage is validated and retried on its own, so `attempts` reports a count per stage and a rejection reports
+the `stage` it comes from.
 The command takes no paper id because normalization is one cross-paper step: it reads the whole index and fails
 when any paper of it has not been extracted yet.
 """
@@ -28,7 +31,7 @@ from rkgk.infrastructure.file_paper_repository import FilePaperRepository
 from rkgk.usecase.normalize_concepts import NormalizeConceptsUseCase
 
 NAME = "normalize"
-HELP = "merge the concepts of every extracted paper with Claude into one shared vocabulary"
+HELP = "merge the concepts of every extracted paper with Claude, then relate them from general knowledge"
 
 DEFAULT_DATA_DIR = Path("data")
 DEFAULT_MAX_ATTEMPTS = 3
@@ -49,6 +52,7 @@ def _run(args: argparse.Namespace) -> int:
         print_json(
             {
                 "status": "invalid",
+                "stage": error.stage,
                 "attempts": args.max_attempts,
                 "issues": [_render_issue(issue) for issue in error.issues],
             }
@@ -67,7 +71,7 @@ def _run(args: argparse.Namespace) -> int:
         return EXIT_ERROR
     payload: dict[str, object] = {"status": "ok", "papers": len(result.paper_ids)}
     payload.update(_render_result(result.normalization))
-    payload["attempts"] = result.attempts
+    payload["attempts"] = {"merge": result.merge_attempts, "relations": result.relation_attempts}
     payload["paths"] = [str(path) for path in normalization_repository.paths()]
     print_json(payload)
     return EXIT_OK

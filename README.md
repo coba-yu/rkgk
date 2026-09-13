@@ -82,9 +82,15 @@ uv run normalize
 
 論文単位ではなく `data/papers/index.json` の全論文をまとめて 1 回で処理する。
 未抽出の論文が 1 本でもあると `error` で止まるので、先に全論文の `extract` を終わらせる。
-論文ごとにばらけた概念を slug の共通語彙へ統合し、表記ゆれを `aliases` と `merged_from` に残す。
-どの論文にも書かれていない概念間関係（`is_a` / `part_of` / `used_for` / `related_to`）は、一般知識として `rationale` 付きで加わる。
+`claude -p` は 2 回呼ぶ。
+1 回目は統合で、論文ごとにばらけた概念を slug の共通語彙へまとめ、表記ゆれを `aliases` と `merged_from` に残す。
+2 回目は統合後の概念一覧を渡し、どの論文にも書かれていない概念間関係（`is_a` / `part_of` / `used_for` / `related_to`）を、一般知識として `rationale` 付きで提案させる。
+このとき、論文が本文で述べた関係も統合後の slug に直して既知の関係として渡し、同じ `source_id`、`target_id`、`relation` の組は提案させない。
+同じ組が提案された場合は関係の段を却下して再試行させ、`build` でも同じ組の一般知識由来の辺はグラフに載せない。
 オプションは `--data-dir`、`--model`、`--max-attempts`（既定 3）。
+`--max-attempts` は段ごとに数えるので、統合で最大 3 回、関係で最大 3 回まで再試行する。
+関係の段が通らなければ、統合が通っていても何も保存しない。
+`ok` の `attempts` は `{"merge": 1, "relations": 2}` のように段ごとの回数を返し、`invalid` は落ちた段を `stage` に入れる。
 
 ### 4. 構築する
 

@@ -79,6 +79,33 @@ def test_a_failing_command_is_reported_with_its_exit_code_and_stderr(tmp_path: P
         ClaudeCodeAgent(command=command).answer("prompt", SCHEMA)
 
 
+def test_a_failure_reports_the_reason_claude_wrote_in_result(tmp_path: Path) -> None:
+    payload = {
+        "type": "result",
+        "subtype": "error_max_turns",
+        "is_error": True,
+        "result": "hit the daily rate limit",
+        "structured_output": None,
+    }
+    command = write_fake_claude(tmp_path, json.dumps(payload), exit_code=1)
+    with pytest.raises(StructuredOutputAgentError, match="result: hit the daily rate limit"):
+        ClaudeCodeAgent(command=command).answer("prompt", SCHEMA)
+
+
+def test_a_failure_with_no_result_text_omits_the_result_note(tmp_path: Path) -> None:
+    payload = {
+        "type": "result",
+        "subtype": "error_max_turns",
+        "is_error": True,
+        "result": "  ",
+        "structured_output": None,
+    }
+    command = write_fake_claude(tmp_path, json.dumps(payload), exit_code=1)
+    with pytest.raises(StructuredOutputAgentError) as excinfo:
+        ClaudeCodeAgent(command=command).answer("prompt", SCHEMA)
+    assert "result:" not in str(excinfo.value)
+
+
 def test_an_error_flag_without_a_failing_exit_code_is_still_a_failure(tmp_path: Path) -> None:
     payload = {"type": "result", "subtype": "success", "is_error": True, "structured_output": {"answer": "hello"}}
     command = write_fake_claude(tmp_path, json.dumps(payload))
@@ -90,6 +117,13 @@ def test_an_answer_without_structured_output_is_reported(tmp_path: Path) -> None
     payload = {"type": "result", "subtype": "success", "is_error": False, "result": "here you go"}
     command = write_fake_claude(tmp_path, json.dumps(payload))
     with pytest.raises(StructuredOutputAgentError, match="no structured output"):
+        ClaudeCodeAgent(command=command).answer("prompt", SCHEMA)
+
+
+def test_a_missing_structured_output_reports_what_claude_wrote_instead(tmp_path: Path) -> None:
+    payload = {"type": "result", "subtype": "success", "is_error": False, "result": "I could not find a value"}
+    command = write_fake_claude(tmp_path, json.dumps(payload))
+    with pytest.raises(StructuredOutputAgentError, match="result: I could not find a value"):
         ClaudeCodeAgent(command=command).answer("prompt", SCHEMA)
 
 

@@ -1,4 +1,5 @@
 import json
+from collections.abc import Callable
 
 import pytest
 from pydantic import ValidationError
@@ -6,13 +7,20 @@ from pydantic import ValidationError
 from rkgk.domain.models.base import SLUG_PATTERN
 from rkgk.domain.models.concept_normalization import (
     CONCEPT_NORMALIZATION_SCHEMA_VERSION,
+    ConceptMerge,
     ConceptNormalization,
+    ConceptNormalizationIssue,
     ConceptNormalizationRun,
+    ConceptNormalizationValidationError,
     GeneralKnowledgeEdge,
+    GeneralKnowledgeRelationProposal,
     LocalConceptRef,
     MissingPaperExtractionsError,
     NormalizedConcept,
+    PaperStatedRelation,
+    build_concept_merge_schema,
     build_concept_normalization_schema,
+    build_general_knowledge_relation_proposal_schema,
 )
 from rkgk.domain.models.vocabulary import ConceptRelationType, ConceptType
 
@@ -139,6 +147,85 @@ def test_a_normalization_without_concepts_is_rejected() -> None:
         build_normalization(concepts=(), concept_relations=())
 
 
+def test_a_merge_carries_the_concepts_alone() -> None:
+    merge = ConceptMerge(concepts=(RAG, CHUNKING, KNOWLEDGE_GRAPH))
+    assert [concept.id for concept in merge.concepts] == [
+        "retrieval-augmented-generation",
+        "page-aligned-chunking",
+        "knowledge-graph",
+    ]
+
+
+def test_a_merge_that_declares_a_schema_version_is_rejected() -> None:
+    with pytest.raises(ValidationError):
+        ConceptMerge.model_validate({"schema_version": 1, "concepts": [RAG.model_dump()]})
+
+
+def test_a_merge_that_declares_the_same_slug_twice_is_rejected_with_that_slug() -> None:
+    with pytest.raises(ValidationError, match="'knowledge-graph' more than once"):
+        ConceptMerge(concepts=(RAG, KNOWLEDGE_GRAPH, KNOWLEDGE_GRAPH))
+
+
+def test_a_merge_that_gives_one_extracted_concept_to_two_concepts_is_rejected_with_that_reference() -> None:
+    stolen = CHUNKING.model_copy(update={"merged_from": (LocalConceptRef(paper_id=1, local_id="c1"),)})
+    with pytest.raises(
+        ValidationError,
+        match="claims paper 1 'c1' for both 'retrieval-augmented-generation' and 'page-aligned-chunking'",
+    ):
+        ConceptMerge(concepts=(RAG, stolen))
+
+
+def test_a_merge_without_concepts_is_rejected() -> None:
+    with pytest.raises(ValidationError):
+        ConceptMerge(concepts=())
+
+
+def test_a_proposal_without_relations_is_accepted() -> None:
+    assert GeneralKnowledgeRelationProposal().concept_relations == ()
+
+
+def test_a_proposal_that_repeats_a_pair_and_relation_is_rejected() -> None:
+    with pytest.raises(ValidationError, match="repeats 'page-aligned-chunking' -> 'retrieval-augmented-generation'"):
+        GeneralKnowledgeRelationProposal(concept_relations=(PART_OF, PART_OF))
+
+
+def test_a_proposal_on_a_slug_no_concept_declares_is_left_to_the_service() -> None:
+    edge = PART_OF.model_copy(update={"target_id": "dense-retrieval"})
+    assert GeneralKnowledgeRelationProposal(concept_relations=(edge,)).concept_relations == (edge,)
+
+
+def test_a_paper_stated_relation_keeps_the_slugs_the_relation_joins_and_every_paper_that_states_it() -> None:
+    relation = PaperStatedRelation(
+        source_id="page-aligned-chunking",
+        target_id="retrieval-augmented-generation",
+        relation=ConceptRelationType.PART_OF,
+        paper_ids=(1, 3),
+    )
+    assert relation.source_id == "page-aligned-chunking"
+    assert relation.relation == ConceptRelationType.PART_OF
+    assert relation.paper_ids == (1, 3)
+
+
+def test_a_paper_stated_relation_that_no_paper_states_is_rejected() -> None:
+    with pytest.raises(ValidationError):
+        PaperStatedRelation(
+            source_id="page-aligned-chunking",
+            target_id="retrieval-augmented-generation",
+            relation=ConceptRelationType.PART_OF,
+            paper_ids=(),
+        )
+
+
+def test_a_paper_stated_relation_on_a_slug_outside_the_pattern_is_rejected() -> None:
+    with pytest.raises(ValidationError):
+        PaperStatedRelation(
+            source_id="Page Aligned Chunking",
+            target_id="retrieval-augmented-generation",
+            relation=ConceptRelationType.PART_OF,
+            paper_ids=(1,),
+        )
+
+
 def test_the_schema_describes_the_provenance_and_the_slug_pattern() -> None:
     schema = build_concept_normalization_schema()
     definitions = schema["$defs"]
@@ -147,14 +234,54 @@ def test_the_schema_describes_the_provenance_and_the_slug_pattern() -> None:
     assert SLUG_PATTERN in json.dumps(schema)
 
 
-def test_the_schema_is_json_serializable() -> None:
-    assert json.loads(json.dumps(build_concept_normalization_schema())) == build_concept_normalization_schema()
+def test_the_merge_schema_asks_for_the_concepts_and_for_no_version() -> None:
+    schema = build_concept_merge_schema()
+    properties = schema["properties"]
+    assert isinstance(properties, dict)
+    assert properties.keys() == {"concepts"}
+    assert SLUG_PATTERN in json.dumps(schema)
 
 
-def test_a_run_keeps_the_papers_it_covered() -> None:
-    run = ConceptNormalizationRun(normalization=build_normalization(), attempts=2, paper_ids=(1, 2))
+def test_the_general_knowledge_schema_asks_for_the_relations_with_their_rationale() -> None:
+    schema = build_general_knowledge_relation_proposal_schema()
+    definitions = schema["$defs"]
+    properties = schema["properties"]
+    assert isinstance(definitions, dict)
+    assert isinstance(properties, dict)
+    assert properties.keys() == {"concept_relations"}
+    assert "rationale" in definitions["GeneralKnowledgeEdge"]["properties"]
+
+
+@pytest.mark.parametrize(
+    "build_schema",
+    [build_concept_normalization_schema, build_concept_merge_schema, build_general_knowledge_relation_proposal_schema],
+)
+def test_the_schema_is_json_serializable(build_schema: Callable[[], dict[str, object]]) -> None:
+    assert json.loads(json.dumps(build_schema())) == build_schema()
+
+
+def test_a_rejection_keeps_the_stage_it_came_from_and_its_issues() -> None:
+    issues = (ConceptNormalizationIssue(path="concept_relations[0].source_id", message="is not a concept"),)
+    error = ConceptNormalizationValidationError("relations", issues)
+    assert error.stage == "relations"
+    assert error.issues == issues
+    assert "concept_relations[0].source_id: is not a concept" in str(error)
+
+
+def test_a_run_counts_the_attempts_of_each_stage_apart() -> None:
+    run = ConceptNormalizationRun(
+        normalization=build_normalization(), merge_attempts=1, relation_attempts=3, paper_ids=(1, 2)
+    )
     assert run.paper_ids == (1, 2)
-    assert run.attempts == 2
+    assert run.merge_attempts == 1
+    assert run.relation_attempts == 3
+
+
+@pytest.mark.parametrize("attempts", [{"merge_attempts": 0}, {"relation_attempts": 0}])
+def test_a_run_of_a_stage_that_never_ran_is_rejected(attempts: dict[str, int]) -> None:
+    counts = {"merge_attempts": 1, "relation_attempts": 1} | attempts
+    with pytest.raises(ValidationError):
+        ConceptNormalizationRun(normalization=build_normalization(), paper_ids=(1, 2), **counts)
 
 
 def test_the_missing_extractions_error_lists_every_paper() -> None:

@@ -1,22 +1,37 @@
-"""Use case that merges the concepts of every extracted paper with an agent and stores the result."""
+"""Use case that merges the concepts of every extracted paper with an agent and stores the result.
+
+The agent is asked twice: once for the merge, and once for the relations between the concepts that merge
+settled on. Splitting the two keeps each answer small enough for an agent to hold the whole input in view, and
+lets a rejection name the stage that has to be repeated.
+"""
 
 from pydantic import ValidationError
 
 from rkgk.domain.agents import StructuredOutputAgent
 from rkgk.domain.models.concept_normalization import (
+    ConceptMerge,
     ConceptNormalization,
     ConceptNormalizationIssue,
     ConceptNormalizationRun,
     ConceptNormalizationValidationError,
+    GeneralKnowledgeRelationProposal,
     MissingPaperExtractionsError,
-    build_concept_normalization_schema,
+    NormalizedConcept,
+    PaperStatedRelation,
+    build_concept_merge_schema,
+    build_general_knowledge_relation_proposal_schema,
 )
 from rkgk.domain.models.paper_extraction import PaperExtraction
-from rkgk.domain.prompts.concept_normalization.builder import build_concept_normalization_prompt
+from rkgk.domain.prompts.concept_merge.builder import build_concept_merge_prompt
+from rkgk.domain.prompts.general_knowledge_relations.builder import build_general_knowledge_relations_prompt
 from rkgk.domain.repositories.concept_normalization import ConceptNormalizationRepository
 from rkgk.domain.repositories.paper import PaperRepository
 from rkgk.domain.repositories.paper_extraction import PaperExtractionNotFoundError, PaperExtractionRepository
-from rkgk.domain.services.concept_normalization import check_normalization_against_extractions
+from rkgk.domain.services.concept_normalization import (
+    check_merge_against_extractions,
+    check_relations_against_concepts,
+    collect_paper_stated_relations,
+)
 from rkgk.domain.services.validation import format_error_path
 
 
@@ -44,28 +59,30 @@ class NormalizeConceptsUseCase:
         self._max_attempts = max_attempts
 
     def execute(self) -> ConceptNormalizationRun:
-        """Normalize every extracted paper at once, asking the agent until its answer survives validation."""
+        """Merge every extracted paper, relate the merged concepts, and store the two answers as one artifact.
+
+        Nothing is saved until both stages have been accepted, so a normalization never reaches the data
+        directory with the concepts of one run and no relations at all.
+        """
         paper_ids = tuple(entry.id for entry in self._paper_repository.find_index())
         if not paper_ids:
             raise ValueError("no papers in the index")
         extractions = self._collect_extractions(paper_ids)
-        schema = build_concept_normalization_schema()
-        attempts = 0
-        previous: object | None = None
-        issues: tuple[ConceptNormalizationIssue, ...] = ()
-        while True:
-            attempts += 1
-            payload = self._agent.answer(build_concept_normalization_prompt(extractions, previous, issues), schema)
-            try:
-                normalization = self._validate(payload, extractions)
-            except ConceptNormalizationValidationError as error:
-                # The agent sees its own answer and what was wrong with it, so a retry corrects rather than reruns.
-                if attempts >= self._max_attempts:
-                    raise
-                previous, issues = payload, error.issues
-                continue
-            self._normalization_repository.save(normalization)
-            return ConceptNormalizationRun(normalization=normalization, attempts=attempts, paper_ids=paper_ids)
+        merge, merge_attempts = self._merge_concepts(extractions)
+        # Only the accepted merge maps the local ids onto slugs, so what the papers state can be written in the
+        # vocabulary of the relation stage only once the merge is through.
+        paper_relations = collect_paper_stated_relations(merge.concepts, extractions)
+        proposal, relation_attempts = self._propose_relations(merge.concepts, paper_relations)
+        normalization = ConceptNormalization(
+            schema_version=1, concepts=merge.concepts, concept_relations=proposal.concept_relations
+        )
+        self._normalization_repository.save(normalization)
+        return ConceptNormalizationRun(
+            normalization=normalization,
+            merge_attempts=merge_attempts,
+            relation_attempts=relation_attempts,
+            paper_ids=paper_ids,
+        )
 
     def _collect_extractions(self, paper_ids: tuple[int, ...]) -> tuple[PaperExtraction, ...]:
         """Read every extraction, reporting all papers that still need one instead of only the first."""
@@ -80,12 +97,72 @@ class NormalizeConceptsUseCase:
             raise MissingPaperExtractionsError(tuple(missing))
         return tuple(extractions)
 
-    def _validate(self, payload: object, extractions: tuple[PaperExtraction, ...]) -> ConceptNormalization:
+    def _merge_concepts(self, extractions: tuple[PaperExtraction, ...]) -> tuple[ConceptMerge, int]:
+        """Ask for the merged vocabulary until it matches the extractions, and say how many attempts it took."""
+        schema = build_concept_merge_schema()
+        attempts = 0
+        previous: object | None = None
+        issues: tuple[ConceptNormalizationIssue, ...] = ()
+        while True:
+            attempts += 1
+            payload = self._agent.answer(build_concept_merge_prompt(extractions, previous, issues), schema)
+            try:
+                merge = self._validate_merge(payload, extractions)
+            except ConceptNormalizationValidationError as error:
+                # The agent sees its own answer and what was wrong with it, so a retry corrects rather than reruns.
+                if attempts >= self._max_attempts:
+                    raise
+                previous, issues = payload, error.issues
+                continue
+            return merge, attempts
+
+    def _propose_relations(
+        self, concepts: tuple[NormalizedConcept, ...], paper_relations: tuple[PaperStatedRelation, ...]
+    ) -> tuple[GeneralKnowledgeRelationProposal, int]:
+        """Ask for the relations between the merged concepts, counting this stage's attempts on their own.
+
+        The merge is not asked for again when a relation is wrong, because the concepts it settled on are what
+        the rejected relations were judged against.
+        """
+        schema = build_general_knowledge_relation_proposal_schema()
+        attempts = 0
+        previous: object | None = None
+        issues: tuple[ConceptNormalizationIssue, ...] = ()
+        while True:
+            attempts += 1
+            payload = self._agent.answer(
+                build_general_knowledge_relations_prompt(concepts, paper_relations, previous, issues), schema
+            )
+            try:
+                proposal = self._validate_proposal(payload, concepts, paper_relations)
+            except ConceptNormalizationValidationError as error:
+                if attempts >= self._max_attempts:
+                    raise
+                previous, issues = payload, error.issues
+                continue
+            return proposal, attempts
+
+    def _validate_merge(self, payload: object, extractions: tuple[PaperExtraction, ...]) -> ConceptMerge:
         try:
-            normalization = ConceptNormalization.model_validate(payload)
+            merge = ConceptMerge.model_validate(payload)
         except ValidationError as error:
-            raise ConceptNormalizationValidationError(_build_issues(error)) from error
-        issues = check_normalization_against_extractions(normalization, extractions)
+            raise ConceptNormalizationValidationError("merge", _build_issues(error)) from error
+        issues = check_merge_against_extractions(merge, extractions)
         if issues:
-            raise ConceptNormalizationValidationError(issues)
-        return normalization
+            raise ConceptNormalizationValidationError("merge", issues)
+        return merge
+
+    def _validate_proposal(
+        self,
+        payload: object,
+        concepts: tuple[NormalizedConcept, ...],
+        paper_relations: tuple[PaperStatedRelation, ...],
+    ) -> GeneralKnowledgeRelationProposal:
+        try:
+            proposal = GeneralKnowledgeRelationProposal.model_validate(payload)
+        except ValidationError as error:
+            raise ConceptNormalizationValidationError("relations", _build_issues(error)) from error
+        issues = check_relations_against_concepts(proposal, concepts, paper_relations)
+        if issues:
+            raise ConceptNormalizationValidationError("relations", issues)
+        return proposal
