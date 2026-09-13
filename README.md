@@ -125,6 +125,7 @@ uv run --extra embedding build
 ```
 
 チャンク分割、埋め込み、Knowledge Graph 組み立て、manifest 書き出しをまとめて行う。
+参考文献の節（`References` または `Bibliography` の見出しから、同じ深さ以下の次の見出しまで）はチャンクに含めない。
 LLM を呼ばないため、古い成果物や手で直した成果物は再試行せず `invalid` として報告する。
 
 | `reason` | 意味 | やり直すこと |
@@ -168,6 +169,7 @@ aws s3 sync data/ "$RKGK_S3_URI/" --exclude '*.DS_Store'
 | 論文を 1 本追加 | その論文を `extract` → `normalize` → `build` |
 
 manifest には index の schema 版、ドメインモデル版、埋め込みモデルと次元、チャンク設定、対象論文 ID が記録される。
+参考文献の見出しが見つからなかった論文の ID も記録され、`build` の出力の `papers_without_references` に入る。
 版が合わない index は移行せず読み込みを拒否するので、`build` し直す。
 手で直した成果物や古い成果物は、`build` が本文照合と整合チェックで検出する。
 

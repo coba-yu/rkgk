@@ -71,6 +71,26 @@ class PageMarker(Entity):
     line: int = Field(ge=1)
 
 
+class PaperPosition(Entity):
+    """One line of the paper, named the way a marker is: the page it sits on and the line inside that page."""
+
+    page: int = Field(ge=1)
+    line: int = Field(ge=1)
+
+
+class ReferencesSpan(Entity):
+    """Where the References section begins and where it ends, as positions in the paper.
+
+    `start` is the heading line itself and `end` the first line after the section, so the section is the
+    half-open range between them.
+    `end` is None when no heading closes the section, which is the common case: the references run to the last
+    page of the paper.
+    """
+
+    start: PaperPosition
+    end: PaperPosition | None = None
+
+
 class Page(Entity):
     number: int = Field(ge=1)
     text: str

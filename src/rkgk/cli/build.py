@@ -131,6 +131,7 @@ def _render_result(result: IndexBuildRun) -> dict[str, object]:
         "concepts": len(result.graph.concepts),
         "paper_concepts": len(result.graph.paper_concepts),
         "concept_relations": len(result.graph.concept_relations),
+        "papers_without_references": list(result.manifest.papers_without_references),
     }
 
 

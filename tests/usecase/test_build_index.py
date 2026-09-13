@@ -195,6 +195,25 @@ def test_the_manifest_records_the_model_the_dimension_the_budget_and_the_papers(
     assert manifest.domain_model_version == 1
 
 
+def test_the_manifest_names_every_paper_without_a_references_heading() -> None:
+    index = FakeIndexRepository()
+    manifest = build_use_case(index, RecordingEmbedder()).execute().manifest
+    assert manifest.papers_without_references == (1, 2)
+
+
+def test_a_paper_whose_references_the_chunker_found_is_left_out_of_the_manifest_list() -> None:
+    papers = dict(PAPERS)
+    papers[1] = build_paper(
+        1,
+        "We study a retrieval-augmented generation pipeline.\n",
+        "The pipeline splits every paper into page-aligned chunks.\n\n## References\n\nAda Lovelace. 1843.\n",
+    )
+    index = FakeIndexRepository()
+    result = build_use_case(index, RecordingEmbedder(), papers=papers).execute()
+    assert result.manifest.papers_without_references == (2,)
+    assert all("Ada Lovelace" not in chunk.text for chunk in result.chunks)
+
+
 def test_the_manifest_is_saved_after_the_artifacts_it_describes() -> None:
     index = FakeIndexRepository()
     build_use_case(index, RecordingEmbedder()).execute()

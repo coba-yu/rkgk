@@ -24,7 +24,7 @@ from rkgk.domain.repositories.concept_normalization import ConceptNormalizationR
 from rkgk.domain.repositories.index import IndexRepository
 from rkgk.domain.repositories.paper import PaperRepository
 from rkgk.domain.repositories.paper_extraction import PaperExtractionNotFoundError, PaperExtractionRepository
-from rkgk.domain.services.chunking import DEFAULT_MAX_TOKENS, chunk_paper
+from rkgk.domain.services.chunking import DEFAULT_MAX_TOKENS, chunk_paper, locate_references
 from rkgk.domain.services.concept_normalization import check_normalization_against_extractions
 from rkgk.domain.services.embedding_items import build_embedding_items
 from rkgk.domain.services.evidence_resolver import resolve_extraction_evidence
@@ -71,6 +71,9 @@ class BuildIndexUseCase:
             raise ConceptNormalizationValidationError("merge", issues)
 
         chunks_by_paper = {paper.meta.id: chunk_paper(paper, self._tokenizer, self._max_tokens) for paper in papers}
+        # A paper the chunker found no References heading in was chunked whole, so the manifest names it and the
+        # command reports it: nothing else in the pipeline can tell that its bibliography is still searchable.
+        papers_without_references = tuple(paper.meta.id for paper in papers if locate_references(paper) is None)
         chunk_evidence = self._resolve_evidence(extractions, chunks_by_paper)
         chunks = tuple(chunk for paper_id in paper_ids for chunk in chunks_by_paper[paper_id])
 
@@ -84,6 +87,7 @@ class BuildIndexUseCase:
             embedding_dimension=table.dimension,
             chunk_max_tokens=self._max_tokens,
             paper_ids=paper_ids,
+            papers_without_references=papers_without_references,
         )
 
         self._index_repository.save_chunks(chunks)

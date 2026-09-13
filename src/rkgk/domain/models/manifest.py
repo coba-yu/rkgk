@@ -1,8 +1,8 @@
 """What one build recorded about the index it produced.
 
 The manifest says with which settings an index was made: the schema of its artifacts, the version of the domain
-model behind them, the embedding model and the dimension of its vectors, the chunk budget, and the papers it
-covers.
+model behind them, the embedding model and the dimension of its vectors, the chunk budget, the papers it
+covers, and the papers in which the chunker found no References heading.
 Search reads the manifest before it reads anything else, so an index made with another model or another schema
 becomes a clear error instead of a query compared against vectors it does not belong with.
 """
@@ -17,7 +17,7 @@ from rkgk.domain.models.chunk import Chunk
 from rkgk.domain.models.embedding import EmbeddedItemKind, EmbeddingTable
 from rkgk.domain.models.graph import KnowledgeGraph
 
-INDEX_SCHEMA_VERSION = 1
+INDEX_SCHEMA_VERSION = 2
 
 # A mixed index can differ in thousands of ids, and a message that lists them all is read by nobody, so only the
 # first few are named and the rest are counted.
@@ -51,12 +51,16 @@ class EmbeddingModelMismatchError(Exception):
 class IndexManifest(Entity):
     # Literal pins the version so an artifact written against another schema fails validation instead of being
     # read as if it were the current one.
-    schema_version: Literal[1]
+    schema_version: Literal[2]
     domain_model_version: int = Field(ge=1)
     embedding_model: str = Field(min_length=1)
     embedding_dimension: int = Field(ge=1)
     chunk_max_tokens: int = Field(ge=1)
     paper_ids: tuple[Annotated[int, Field(ge=1)], ...] = Field(min_length=1)
+    # A paper listed here was chunked without dropping anything, so its references are still searchable. It is
+    # recorded rather than raised: a paper really can carry no References heading, and the list says which
+    # papers to look at when a search keeps hitting a bibliography.
+    papers_without_references: tuple[Annotated[int, Field(ge=1)], ...]
 
     @model_validator(mode="after")
     def _reject_repeated_paper_ids(self) -> Self:
@@ -65,6 +69,18 @@ class IndexManifest(Entity):
             if paper_id in declared:
                 raise ValueError(f"paper_ids declares {paper_id} more than once")
             declared.add(paper_id)
+        return self
+
+    @model_validator(mode="after")
+    def _check_papers_without_references_against_the_papers(self) -> Self:
+        covered = set(self.paper_ids)
+        reported: set[int] = set()
+        for paper_id in self.papers_without_references:
+            if paper_id not in covered:
+                raise ValueError(f"papers_without_references names {paper_id}, which the index does not cover")
+            if paper_id in reported:
+                raise ValueError(f"papers_without_references declares {paper_id} more than once")
+            reported.add(paper_id)
         return self
 
 
