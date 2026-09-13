@@ -1,7 +1,8 @@
 import pytest
 
 from rkgk.domain.models.chunk import Chunk
-from rkgk.domain.services.chunking import DEFAULT_MAX_TOKENS, chunk_paper
+from rkgk.domain.models.paper import PaperPosition, ReferencesSpan
+from rkgk.domain.services.chunking import DEFAULT_MAX_TOKENS, chunk_paper, locate_references
 from rkgk.infrastructure.whitespace_tokenizer import WhitespaceTokenizer
 from tests.usecase.fakes import build_paper
 
@@ -109,3 +110,99 @@ def test_chunk_paper_defaults_to_512_tokens() -> None:
 
     assert len(chunk_paper(fitting, TOKENIZER)) == 1
     assert len(chunk_paper(overflowing, TOKENIZER)) == 2
+
+
+def test_chunk_paper_leaves_a_references_section_that_spans_two_pages_out() -> None:
+    paper = build_paper(
+        1,
+        "We evaluate the pipeline.\n\n## References\n\nAda Lovelace. A note on the engine. 1843.\n",
+        "Grace Hopper. A compiler for the machine. 1952.\n",
+    )
+
+    chunks = chunk_paper(paper, TOKENIZER)
+
+    assert texts_of(chunks) == ["We evaluate the pipeline."]
+
+
+def test_chunk_paper_resumes_at_a_heading_of_the_same_level_after_the_references() -> None:
+    paper = build_paper(
+        1,
+        "We evaluate the pipeline.\n\n## References\n\nAda Lovelace. A note on the engine. 1843.\n",
+        "Grace Hopper. A compiler for the machine. 1952.\n\n## A APPENDIX\n\nWe list the prompts.\n",
+    )
+
+    chunks = chunk_paper(paper, TOKENIZER)
+
+    assert texts_of(chunks) == ["We evaluate the pipeline.", "## A APPENDIX\n\nWe list the prompts."]
+    assert [chunk.page_start for chunk in chunks] == [1, 2]
+
+
+def test_chunk_paper_keeps_a_deeper_heading_inside_the_references() -> None:
+    paper = build_paper(
+        1,
+        "We evaluate the pipeline.\n\n## References\n\n### Datasets\n\nAda Lovelace. A note on the engine. 1843.\n",
+    )
+
+    chunks = chunk_paper(paper, TOKENIZER)
+
+    assert texts_of(chunks) == ["We evaluate the pipeline."]
+
+
+def test_chunk_paper_keeps_every_page_of_a_paper_without_a_references_heading() -> None:
+    paper = build_paper(1, "We evaluate the pipeline.\n", "We list the prompts.\n")
+
+    chunks = chunk_paper(paper, TOKENIZER)
+
+    assert texts_of(chunks) == ["We evaluate the pipeline.", "We list the prompts."]
+
+
+@pytest.mark.parametrize("heading", ["## Bibliography", "## **References** ", "### **References**", "# REFERENCES"])
+def test_chunk_paper_recognises_the_references_heading_however_it_is_written(heading: str) -> None:
+    paper = build_paper(1, f"We evaluate the pipeline.\n\n{heading}\n\nAda Lovelace. A note. 1843.\n")
+
+    chunks = chunk_paper(paper, TOKENIZER)
+
+    assert texts_of(chunks) == ["We evaluate the pipeline."]
+
+
+def test_chunk_paper_numbers_the_chunks_around_a_page_that_holds_only_references() -> None:
+    paper = build_paper(
+        1,
+        "We evaluate the pipeline.\n\n## References\n\nAda Lovelace. A note on the engine. 1843.\n",
+        "Grace Hopper. A compiler for the machine. 1952.\n",
+        "## A APPENDIX\n\nWe list the prompts.\n",
+    )
+
+    chunks = chunk_paper(paper, TOKENIZER)
+
+    assert [(chunk.idx, chunk.page_start) for chunk in chunks] == [(0, 1), (1, 3)]
+
+
+def test_locate_references_finds_nothing_in_a_paper_without_the_heading() -> None:
+    paper = build_paper(1, "We evaluate the pipeline.\n", "We list the prompts.\n")
+
+    assert locate_references(paper) is None
+
+
+def test_locate_references_leaves_the_end_open_when_the_section_runs_to_the_last_page() -> None:
+    paper = build_paper(
+        1,
+        "We evaluate the pipeline.\n\n## References\n",
+        "Grace Hopper. A compiler for the machine. 1952.\n",
+    )
+
+    span = locate_references(paper)
+
+    assert span == ReferencesSpan(start=PaperPosition(page=1, line=3))
+
+
+def test_locate_references_ends_the_section_at_the_next_heading_of_the_same_level() -> None:
+    paper = build_paper(
+        1,
+        "We evaluate the pipeline.\n\n## References\n",
+        "Grace Hopper. A compiler for the machine. 1952.\n\n## A APPENDIX\n",
+    )
+
+    span = locate_references(paper)
+
+    assert span == ReferencesSpan(start=PaperPosition(page=1, line=3), end=PaperPosition(page=2, line=3))

@@ -33,12 +33,13 @@ CHUNKS = (
 )
 
 MANIFEST = IndexManifest(
-    schema_version=1,
+    schema_version=2,
     domain_model_version=1,
     embedding_model="Qwen/Qwen3-Embedding-0.6B",
     embedding_dimension=4,
     chunk_max_tokens=512,
     paper_ids=(1, 2),
+    papers_without_references=(2,),
 )
 
 GRAPH = KnowledgeGraph(
@@ -350,13 +351,13 @@ def store_manifest_with(repository: FileIndexRepository, **overrides: object) ->
 
 def test_a_manifest_of_another_schema_version_is_reported_as_incompatible(tmp_path: Path) -> None:
     repository = FileIndexRepository(tmp_path)
-    store_manifest_with(repository, schema_version=2)
+    store_manifest_with(repository, schema_version=3)
     with pytest.raises(IndexIncompatibleError) as caught:
         repository.find_manifest()
     message = str(caught.value)
     assert "schema" in message
+    assert "3" in message
     assert "2" in message
-    assert "1" in message
 
 
 def test_a_manifest_of_another_domain_model_version_is_reported_as_incompatible(tmp_path: Path) -> None:
@@ -368,7 +369,7 @@ def test_a_manifest_of_another_domain_model_version_is_reported_as_incompatible(
 
 def test_an_incompatible_index_is_a_repository_error_carrying_its_location(tmp_path: Path) -> None:
     repository = FileIndexRepository(tmp_path)
-    store_manifest_with(repository, schema_version=2)
+    store_manifest_with(repository, schema_version=3)
     with pytest.raises(IndexRepositoryError) as caught:
         repository.find_manifest()
     assert isinstance(caught.value, IndexIncompatibleError)
@@ -434,7 +435,7 @@ def test_chunks_rewritten_after_the_saved_items_are_reported_as_invalid(tmp_path
 
 def test_an_incompatible_manifest_is_reported_before_the_missing_artifacts(tmp_path: Path) -> None:
     repository = FileIndexRepository(tmp_path)
-    store_manifest_with(repository, schema_version=2)
+    store_manifest_with(repository, schema_version=3)
     with pytest.raises(IndexIncompatibleError, match="schema"):
         repository.find_index()
 

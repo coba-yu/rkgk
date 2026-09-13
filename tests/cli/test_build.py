@@ -142,6 +142,8 @@ def test_run_builds_the_index_and_writes_every_artifact(tmp_path: Path, capsys: 
     assert output["concepts"] == 3
     assert output["paper_concepts"] == 3
     assert output["concept_relations"] == 2
+    # The fixture paper 1 carries a References heading and the second paper written here does not.
+    assert output["papers_without_references"] == [2]
     index_dir = data_dir / "index"
     assert output["paths"] == [
         str(index_dir / "manifest.json"),
@@ -160,12 +162,13 @@ def test_run_records_the_settings_of_the_build_in_the_manifest(tmp_path: Path) -
     assert main(["--data-dir", str(data_dir), "--embedder", "fake", "--max-tokens", "256"]) == 0
     manifest = json.loads((data_dir / "index" / "manifest.json").read_text(encoding="utf-8"))
     assert manifest == {
-        "schema_version": 1,
+        "schema_version": 2,
         "domain_model_version": 1,
         "embedding_model": "fake-8",
         "embedding_dimension": 8,
         "chunk_max_tokens": 256,
         "paper_ids": [1, 2],
+        "papers_without_references": [2],
     }
 
 

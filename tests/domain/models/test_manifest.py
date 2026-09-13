@@ -44,12 +44,13 @@ def build_table(*items: EmbeddedItem) -> EmbeddingTable:
 
 def build_manifest(**overrides: object) -> IndexManifest:
     payload: dict[str, object] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "domain_model_version": 1,
         "embedding_model": "fake-4",
         "embedding_dimension": 4,
         "chunk_max_tokens": 512,
         "paper_ids": (1,),
+        "papers_without_references": (),
     }
     payload.update(overrides)
     return IndexManifest.model_validate(payload)
@@ -72,12 +73,27 @@ def test_a_manifest_declares_the_current_schema_version() -> None:
 
 def test_another_schema_version_is_rejected() -> None:
     with pytest.raises(ValidationError):
-        build_manifest(schema_version=2)
+        build_manifest(schema_version=1)
 
 
 def test_the_same_paper_listed_twice_is_rejected() -> None:
     with pytest.raises(ValidationError, match="declares 1 more than once"):
         build_manifest(paper_ids=(1, 2, 1))
+
+
+def test_a_paper_without_references_that_the_index_does_not_cover_is_rejected() -> None:
+    with pytest.raises(ValidationError, match="papers_without_references names 2"):
+        build_manifest(papers_without_references=(2,))
+
+
+def test_the_same_paper_without_references_listed_twice_is_rejected() -> None:
+    with pytest.raises(ValidationError, match="papers_without_references declares 1 more than once"):
+        build_manifest(paper_ids=(1, 2), papers_without_references=(1, 1))
+
+
+def test_a_manifest_records_the_papers_in_which_no_references_heading_was_found() -> None:
+    manifest = build_manifest(paper_ids=(1, 2), papers_without_references=(2,))
+    assert manifest.papers_without_references == (2,)
 
 
 def test_a_manifest_without_papers_is_rejected() -> None:
